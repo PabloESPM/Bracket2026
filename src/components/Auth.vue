@@ -115,7 +115,7 @@ async function handleSubmit() {
   }
 
   // Create dummy email
-  const email = `${cleanUsername}@mundial2026.internal`
+  const email = `${cleanUsername}@mundial2026.com`
 
   try {
     if (isSignUp.value) {
