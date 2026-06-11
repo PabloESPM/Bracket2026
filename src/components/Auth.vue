@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-950 px-4 relative overflow-hidden">
+  <div class="w-full bg-slate-950 border border-slate-800/85 p-4 md:p-6 rounded-2xl relative overflow-hidden shadow-2xl">
     <!-- Background accents -->
     <div class="absolute w-96 h-96 bg-blue-600/10 blur-[120px] -top-12 -left-12 rounded-full"></div>
     <div class="absolute w-96 h-96 bg-emerald-600/10 blur-[120px] -bottom-12 -right-12 rounded-full"></div>
 
-    <div class="w-full max-w-md bg-slate-900/40 border border-slate-800/80 p-6 md:p-8 rounded-2xl shadow-2xl backdrop-blur-xl space-y-6 relative z-10">
+    <div class="w-full space-y-6 relative z-10">
       <!-- Title -->
       <div class="text-center space-y-2">
         <span class="text-4xl md:text-5xl block animate-bounce duration-1000">🏆</span>

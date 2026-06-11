@@ -1,19 +1,18 @@
 <template>
   <div :class="{'dark': isDark}" class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
-    <!-- Authentication screen -->
-    <Auth v-if="!user" @auth-success="onAuthSuccess" />
-
     <!-- Main Application -->
-    <div v-else class="flex flex-col min-h-screen">
+    <div class="flex flex-col min-h-screen">
       <Navbar
         :activeTab="activeTab"
-        :username="profile?.username || user.email.split('@')[0]"
+        :isLoggedIn="!!user"
+        :username="profile?.username || (user ? user.email.split('@')[0] : 'Invitado')"
         :isAdmin="profile?.is_admin || false"
         :saving="saving"
         :chismosoMode="chismosoMode"
         :isDark="isDark"
         @change-tab="handleTabChange"
         @logout="handleLogout"
+        @open-login="showAuthModal = true"
         @toggle-theme="toggleTheme"
       />
 
@@ -66,7 +65,7 @@
           <Leaderboard
             v-if="activeTab === 'leaderboard'"
             :users="leaderboard"
-            :currentUserId="user.id"
+            :currentUserId="user ? user.id : null"
             @view-predictions="enterChismosoMode"
           />
 
@@ -74,7 +73,7 @@
           <GroupGrid
             v-if="activeTab === 'groups'"
             :groups="computedGroups"
-            :readOnly="chismosoMode"
+            :readOnly="chismosoMode || !user"
             @edit-match="openMatchEdit"
             @reorder-group="handleGroupReorder"
           />
@@ -83,7 +82,7 @@
           <BracketTree
             v-if="activeTab === 'bracket'"
             :bracket="computedBracket"
-            :readOnly="chismosoMode"
+            :readOnly="chismosoMode || !user"
             @set-winner="handleBracketWinner"
             @validate-and-drop="handleBracketDrop"
           />
@@ -109,6 +108,21 @@
         @save="savePrediction"
         @clear="clearPrediction"
       />
+
+      <!-- Authentication Modal Overlay -->
+      <div v-if="showAuthModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div class="relative w-full max-w-md">
+          <!-- Close button -->
+          <button
+            @click="showAuthModal = false"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold z-20 cursor-pointer w-8 h-8 flex items-center justify-center rounded-full bg-slate-900/60 hover:bg-slate-800 transition"
+            title="Cerrar"
+          >
+            ✕
+          </button>
+          <Auth @auth-success="onAuthSuccess" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -138,10 +152,11 @@ const session = ref(null)
 const profile = ref(null)
 
 // UI State
-const activeTab = ref('leaderboard')
+const activeTab = ref('groups')
 const isDark = ref(true)
 const saving = ref(false)
 const loadingData = ref(false)
+const showAuthModal = ref(false)
 
 // Chismoso mode state (view other users)
 const chismosoMode = ref(false)
@@ -165,18 +180,18 @@ onMounted(() => {
   supabase.auth.getSession().then(({ data: { session: s } }) => {
     session.value = s
     user.value = s?.user || null
-    if (user.value) {
-      fetchInitialData()
-    }
+    fetchInitialData()
   })
 
   supabase.auth.onAuthStateChange((_event, s) => {
     session.value = s
+    const oldUser = user.value
     user.value = s?.user || null
     if (user.value) {
       fetchInitialData()
     } else {
-      clearState()
+      clearUserState()
+      fetchInitialData()
     }
   })
 })
@@ -194,6 +209,12 @@ function toggleTheme() {
   applyTheme()
 }
 
+function clearUserState() {
+  profile.value = null
+  userPredictions.value = []
+  exitChismosoMode()
+}
+
 function clearState() {
   user.value = null
   profile.value = null
@@ -209,6 +230,7 @@ async function handleLogout() {
 
 function onAuthSuccess(loggedInUser) {
   user.value = loggedInUser
+  showAuthModal.value = false
   fetchInitialData()
 }
 
@@ -218,20 +240,23 @@ function handleTabChange(tabId) {
 
 // Fetch all database information
 async function fetchInitialData() {
-  if (!user.value) return
   loadingData.value = true
   try {
-    // 1. Fetch Profile
-    const { data: prof, error: profErr } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.value.id)
-      .maybeSingle()
+    // 1. Fetch Profile (only if logged in)
+    if (user.value) {
+      const { data: prof, error: profErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.value.id)
+        .maybeSingle()
 
-    if (profErr) throw profErr
-    profile.value = prof
+      if (profErr) throw profErr
+      profile.value = prof
+    } else {
+      profile.value = null
+    }
 
-    // 2. Fetch Matches
+    // 2. Fetch Matches (ALWAYS)
     const { data: mat, error: matErr } = await supabase
       .from('matches')
       .select('*')
@@ -240,16 +265,20 @@ async function fetchInitialData() {
     if (matErr) throw matErr
     officialMatches.value = mat || []
 
-    // 3. Fetch User Predictions
-    const { data: pred, error: predErr } = await supabase
-      .from('predictions')
-      .select('*')
-      .eq('user_id', user.value.id)
+    // 3. Fetch User Predictions (only if logged in)
+    if (user.value) {
+      const { data: pred, error: predErr } = await supabase
+        .from('predictions')
+        .select('*')
+        .eq('user_id', user.value.id)
 
-    if (predErr) throw predErr
-    userPredictions.value = pred || []
+      if (predErr) throw predErr
+      userPredictions.value = pred || []
+    } else {
+      userPredictions.value = []
+    }
 
-    // 4. Fetch Leaderboard View
+    // 4. Fetch Leaderboard View (ALWAYS)
     const { data: lead, error: leadErr } = await supabase
       .from('leaderboard')
       .select('*')
@@ -267,7 +296,7 @@ async function fetchInitialData() {
 
 // Enter chismoso mode to view friend predictions
 async function enterChismosoMode(userRow) {
-  if (userRow.user_id === user.value.id) {
+  if (user.value && userRow.user_id === user.value.id) {
     exitChismosoMode()
     return
   }
