@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+/* Confederation Border Colors */
+.conf-uefa {
+  border-left: 4px solid #3b82f6 !important;
+}
+
+.conf-conmebol {
+  border-left: 4px solid #22c55e !important;
+}
+
+.conf-concacaf {
+  border-left: 4px solid #ef4444 !important;
+}
+
+.conf-caf {
+  border-left: 4px solid #f97316 !important;
+}
+
+.conf-afc {
+  border-left: 4px solid #eab308 !important;
+}
+
+.conf-ofc {
+  border-left: 4px solid #a855f7 !important;
+}
+
+/* Animated Trophy */
+@keyframes trophy-pulse {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.4));
+  }
+
+  50% {
+    transform: scale(1.15) rotate(5deg);
+    filter: drop-shadow(0 0 25px rgba(234, 179, 8, 0.8));
+  }
+}
+
+.trophy-anim {
+  animation: trophy-pulse 2s infinite ease-in-out;
+}
+
+/* Glassmorphism card backdrops */
+.glass-card {
+  backdrop-filter: blur(12px);
+}
+
+/* Bracket lines styling */
+.bracket-connector {
+  stroke: #64748b;
+  stroke-width: 2;
+  fill: none;
+  transition: stroke 0.3s;
+}
+
+.dark .bracket-connector {
+  stroke: #475569;
+}
+
+.bracket-connector.active {
+  stroke: #3b82f6;
+}
