@@ -212,7 +212,9 @@ function toggleTheme() {
 function clearUserState() {
   profile.value = null
   userPredictions.value = []
-  exitChismosoMode()
+  chismosoMode.value = false
+  viewedUser.value = null
+  chismosoPredictions.value = []
 }
 
 function clearState() {
