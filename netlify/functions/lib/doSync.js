@@ -165,8 +165,8 @@ export async function doSync() {
 
   const supabase = createClient(url, key)
 
-  // 1. Llamada a la API de football-data.org
-  const res = await fetch(`${FD_API_URL}/competitions/${COMPETITION}/matches`, {
+  // 1. Llamada a la API de football-data.org (season=2026 para el Mundial 2026)
+  const res = await fetch(`${FD_API_URL}/competitions/${COMPETITION}/matches?season=2026`, {
     headers: { 'X-Auth-Token': FD_API_KEY }
   })
 
@@ -219,13 +219,20 @@ export async function doSync() {
     if (isLive && !hasValidScores) {
       // Partido en curso en plan gratuito: solo actualizar status si ha cambiado
       if (match.status !== 'live') {
-        const { error } = await supabase.from('matches').update({
-          status: 'live',
-          api_match_id: apiMatch.id?.toString()
-        }).eq('id', match.id)
-        if (error) throw error
+        const updatePayload = { status: 'live' }
+        // api_match_id es opcional - solo añadir si la columna existe en el schema
+        try { updatePayload.api_match_id = apiMatch.id?.toString() } catch (_) {}
+        const { error } = await supabase.from('matches').update(updatePayload).eq('id', match.id)
+        if (error) {
+          // Si el error es por columna inexistente, reintentar sin api_match_id
+          if (error.message?.includes('api_match_id')) {
+            const { error: e2 } = await supabase.from('matches').update({ status: 'live' }).eq('id', match.id)
+            if (e2) throw e2
+          } else {
+            throw error
+          }
+        }
         match.status = 'live'
-        match.api_match_id = apiMatch.id?.toString()
         updatedCount++
         console.log(`[doSync] Partido ${match.id} comenzó (score pendiente al final del partido)`)
       }
@@ -251,10 +258,19 @@ export async function doSync() {
       away_score:   aScore,
       winner:       winner,
       status:       newStatus,
-      api_match_id: apiMatch.id?.toString()
     }).eq('id', match.id)
 
-    if (updateErr) throw updateErr
+    if (updateErr) {
+      // Si falla por api_match_id inexistente, reintentar sin él (la columna es opcional)
+      if (updateErr.message?.includes('api_match_id')) {
+        const { error: e2 } = await supabase.from('matches').update({
+          home_score: hScore, away_score: aScore, winner, status: newStatus
+        }).eq('id', match.id)
+        if (e2) throw e2
+      } else {
+        throw updateErr
+      }
+    }
 
     match.home_score = hScore; match.away_score = aScore
     match.winner = winner; match.status = isFinished ? 'finished' : 'live'
