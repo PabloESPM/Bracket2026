@@ -185,7 +185,6 @@ onMounted(() => {
 
   supabase.auth.onAuthStateChange((_event, s) => {
     session.value = s
-    const oldUser = user.value
     user.value = s?.user || null
     if (user.value) {
       fetchInitialData()
@@ -194,6 +193,18 @@ onMounted(() => {
       fetchInitialData()
     }
   })
+
+  // Suscripción Realtime de Supabase (gratuita): actualiza officialMatches
+  // automáticamente cuando el cron de Netlify escribe en la tabla 'matches'.
+  supabase
+    .channel('matches-realtime')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, (payload) => {
+      const idx = officialMatches.value.findIndex(m => m.id === payload.new.id)
+      if (idx !== -1) {
+        officialMatches.value[idx] = { ...officialMatches.value[idx], ...payload.new }
+      }
+    })
+    .subscribe()
 })
 
 function applyTheme() {
@@ -365,14 +376,18 @@ const computedGroups = computed(() => {
       const locked = new Date() >= new Date(match.start_time) || match.status !== 'scheduled'
 
       if (match.status === 'finished' || match.status === 'live') {
-        // Official played match overrides predictions
+        // Partido oficial en curso o terminado
+        // En plan gratuito, durante IN_PLAY los scores son null → no contar como jugado
+        const hasScore = match.home_score !== null && match.home_score !== undefined &&
+                         match.away_score !== null && match.away_score !== undefined
         groups[gKey].matches.push({
           id: matchId,
           home: match.home_team,
           away: match.away_team,
-          scoreHome: match.home_score,
-          scoreAway: match.away_score,
-          played: true,
+          scoreHome: hasScore ? match.home_score : null,
+          scoreAway: hasScore ? match.away_score : null,
+          played: hasScore, // Solo cuenta en standings si hay score real
+          isLive: match.status === 'live', // Para mostrar indicador LIVE en UI
           locked: true,
           start_time: match.start_time,
           date: formatDateStr(match.start_time),

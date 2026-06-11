@@ -108,13 +108,22 @@
                 <img class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm" :src="getFlagUrl(m.home)" alt="">
               </div>
               
-              <!-- Score / vs badge -->
+            <!-- Score / vs badge -->
               <span
-                class="text-[10px] md:text-[11px] px-1.5 md:px-2 py-0.5 bg-slate-900/80 rounded-md border border-slate-800/50 min-w-[34px] md:min-w-[38px] text-center"
-                :class="[m.played ? 'text-indigo-400 font-extrabold' : 'text-slate-500 font-semibold', isLocked(m) ? 'border-amber-900/50' : '']"
+                class="text-[10px] md:text-[11px] px-1.5 md:px-2 py-0.5 rounded-md border min-w-[34px] md:min-w-[38px] text-center"
+                :class="[
+                  m.isLive
+                    ? 'bg-red-950/60 border-red-800/60 text-red-400 font-extrabold animate-pulse'
+                    : m.played
+                      ? 'bg-slate-900/80 border-slate-800/50 text-indigo-400 font-extrabold'
+                      : 'bg-slate-900/80 border-slate-800/50 text-slate-500 font-semibold',
+                  isLocked(m) && !m.played && !m.isLive ? 'border-amber-900/50' : ''
+                ]"
               >
-                <span v-if="isLocked(m) && !m.played" class="mr-0.5 text-[8px]" title="Pronóstico cerrado">🔒</span>
-                {{ m.played ? `${m.scoreHome} - ${m.scoreAway}` : 'vs' }}
+                <span v-if="m.isLive" class="mr-0.5 text-[7px] align-middle">🔴</span>
+                <span v-else-if="isLocked(m) && !m.played" class="mr-0.5 text-[8px]" title="Pronóstico cerrado">🔒</span>
+                <span v-if="m.isLive && !m.played">En curso</span>
+                <span v-else>{{ m.played ? `${m.scoreHome} - ${m.scoreAway}` : 'vs' }}</span>
               </span>
 
               <div class="flex items-center gap-1.5 md:gap-2 w-[42%] justify-start text-left">
@@ -126,7 +135,12 @@
             <div class="flex items-center justify-between text-[8px] md:text-[9px] text-slate-500 font-medium px-1">
               <span>📅 {{ m.date }}</span>
               <span class="truncate max-w-[100px] md:max-w-[130px]">📍 {{ m.city || m.stadium }}</span>
-              <span class="text-indigo-400 bg-indigo-950/40 border border-indigo-900/40 px-1 rounded text-[7px] md:text-[8px] font-extrabold">⏱ {{ m.time }}</span>
+              <span
+                class="px-1 rounded text-[7px] md:text-[8px] font-extrabold"
+                :class="m.isLive
+                  ? 'text-red-400 bg-red-950/40 border border-red-900/40'
+                  : 'text-indigo-400 bg-indigo-950/40 border border-indigo-900/40'"
+              >{{ m.isLive ? '🔴 EN VIVO' : '⏱ ' + m.time }}</span>
             </div>
           </div>
         </div>

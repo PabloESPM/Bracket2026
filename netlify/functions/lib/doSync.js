@@ -201,30 +201,56 @@ export async function doSync() {
       return am.id?.toString() === match.api_match_id || (apiHome === match.home_team && apiAway === match.away_team)
     })
 
-    if (!apiMatch || (apiMatch.status !== 'FINISHED' && apiMatch.status !== 'IN_PLAY')) continue
+    if (!apiMatch) continue
 
-    const hScore    = apiMatch.score.fullTime.home
-    const aScore    = apiMatch.score.fullTime.away
     const isFinished = apiMatch.status === 'FINISHED'
+    const isLive     = apiMatch.status === 'IN_PLAY' || apiMatch.status === 'PAUSED'
 
+    if (!isFinished && !isLive) continue
+
+    const hScore = apiMatch.score?.fullTime?.home
+    const aScore = apiMatch.score?.fullTime?.away
+    // El plan gratuito devuelve null en fullTime durante IN_PLAY. Solo actualizamos
+    // scores cuando el partido está FINISHED con valores reales.
+    const hasValidScores = hScore !== null && hScore !== undefined && aScore !== null && aScore !== undefined
+
+    const newStatus = isFinished ? 'finished' : 'live'
+
+    if (isLive && !hasValidScores) {
+      // Partido en curso en plan gratuito: solo actualizar status si ha cambiado
+      if (match.status !== 'live') {
+        const { error } = await supabase.from('matches').update({
+          status: 'live',
+          api_match_id: apiMatch.id?.toString()
+        }).eq('id', match.id)
+        if (error) throw error
+        match.status = 'live'
+        match.api_match_id = apiMatch.id?.toString()
+        updatedCount++
+        console.log(`[doSync] Partido ${match.id} comenzó (score pendiente al final del partido)`)
+      }
+      continue
+    }
+
+    // A partir de aquí: FINISHED con scores válidos (o IN_PLAY con livescores de pago)
     let winner = null
-    if (match.stage !== 'group') {
+    if (match.stage !== 'group' && hasValidScores) {
       if (hScore > aScore) winner = match.home_team
       else if (aScore > hScore) winner = match.away_team
       else {
-        const wName = apiMatch.score.winner === 'HOME_TEAM' ? apiMatch.homeTeam?.name : apiMatch.awayTeam?.name
+        const wName = apiMatch.score?.winner === 'HOME_TEAM' ? apiMatch.homeTeam?.name : apiMatch.awayTeam?.name
         winner = TEAM_TRANSLATIONS[wName] || wName || null
       }
     }
 
-    const changed = match.home_score !== hScore || match.away_score !== aScore || match.status !== (isFinished ? 'finished' : 'live')
+    const changed = match.home_score !== hScore || match.away_score !== aScore || match.status !== newStatus
     if (!changed) continue
 
     const { error: updateErr } = await supabase.from('matches').update({
       home_score:   hScore,
       away_score:   aScore,
       winner:       winner,
-      status:       isFinished ? 'finished' : 'live',
+      status:       newStatus,
       api_match_id: apiMatch.id?.toString()
     }).eq('id', match.id)
 
