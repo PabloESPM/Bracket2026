@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS public.matches (
     winner TEXT NULL, -- Ganador real del partido (sobre todo en eliminatorias)
     status TEXT DEFAULT 'scheduled' NOT NULL CHECK (status IN ('scheduled', 'live', 'finished')),
     start_time TIMESTAMPTZ NOT NULL,
-    stage TEXT NOT NULL -- group | r32 | r16 | qf | sf | third | final
+    stage TEXT NOT NULL, -- group | r32 | r16 | qf | sf | third | final
+    api_match_id TEXT NULL -- Para mapeo opcional con API de resultados externa
 );
 
 -- Habilitar RLS en matches

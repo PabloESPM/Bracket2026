@@ -12,8 +12,15 @@
       </div>
       <div class="flex flex-wrap gap-2 shrink-0">
         <button
+          @click="handleAPISync"
+          :disabled="loading || syncingAPI"
+          class="px-4 py-2 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/50 text-indigo-300 hover:text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-lg"
+        >
+          {{ syncingAPI ? 'Sincronizando...' : '📡 Sincronizar API' }}
+        </button>
+        <button
           @click="seedDatabase"
-          :disabled="loading"
+          :disabled="loading || syncingAPI"
           class="px-4 py-2 bg-red-900/40 hover:bg-red-800/60 border border-red-700/50 text-red-300 hover:text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-lg"
         >
           {{ loading ? 'Procesando...' : '🔄 Inicializar Calendario' }}
@@ -173,6 +180,7 @@ import {
   R32_SLOT_LABELS,
   propagateOfficialMatches
 } from '../utils/tournamentLogic.js'
+import { syncMatchesWithAPI } from '../utils/apiSync.js'
 
 const emit = defineEmits(['matches-updated'])
 
@@ -182,6 +190,25 @@ const errorMsg = ref("")
 const successMsg = ref("")
 const activeSubTab = ref("group")
 const officialMatches = ref([])
+
+const syncingAPI = ref(false)
+
+async function handleAPISync() {
+  syncingAPI.value = true
+  errorMsg.value = ""
+  successMsg.value = ""
+  try {
+    const updatedCount = await syncMatchesWithAPI()
+    successMsg.value = `¡Sincronización completada! Se actualizaron marcadores de ${updatedCount} partidos.`
+    await fetchMatches()
+    emit('matches-updated')
+  } catch (err) {
+    console.error(err)
+    errorMsg.value = "Error al sincronizar con la API: " + err.message
+  } finally {
+    syncingAPI.value = false
+  }
+}
 
 // Form models
 const scores = ref({}) // { matchId: { home: 0, away: 0 } }
