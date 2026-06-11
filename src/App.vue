@@ -30,8 +30,15 @@
 
       <!-- Main Content Area -->
       <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6">
-        <!-- Alert when database is not initialized -->
-        <div v-if="officialMatches.length === 0 && !loadingData" class="p-6 bg-amber-950/20 border border-amber-900/50 rounded-2xl text-center space-y-4 max-w-md mx-auto my-12">
+        <!-- 1. Admin Panel (Rendered directly so it's accessible to seed the database) -->
+        <div v-if="activeTab === 'admin' && profile?.is_admin">
+          <AdminPanel
+            @matches-updated="fetchInitialData"
+          />
+        </div>
+
+        <!-- 2. Alert when database is not initialized (for non-admin tabs) -->
+        <div v-else-if="officialMatches.length === 0 && !loadingData" class="p-6 bg-amber-950/20 border border-amber-900/50 rounded-2xl text-center space-y-4 max-w-md mx-auto my-12">
           <span class="text-4xl block">⚠️</span>
           <h3 class="font-extrabold text-amber-400 text-lg">Calendario sin inicializar</h3>
           <p class="text-xs text-slate-400">
@@ -48,11 +55,12 @@
           </button>
         </div>
 
+        <!-- 3. Loading Indicator -->
         <div v-else-if="loadingData" class="py-24 text-center text-slate-500 text-xs font-bold">
           <div class="inline-block animate-spin text-lg mr-2">⏳</div> Cargando datos del torneo...
         </div>
 
-        <!-- Render Tabs dynamically -->
+        <!-- 4. Other tabs (Rendered once matches are populated) -->
         <div v-else>
           <!-- 1. LEADERBOARD -->
           <Leaderboard
@@ -85,12 +93,6 @@
             v-if="activeTab === 'simulation'"
             :groups="computedGroups"
             :bracket="computedBracket"
-          />
-
-          <!-- 5. ADMIN PANEL -->
-          <AdminPanel
-            v-if="activeTab === 'admin' && profile?.is_admin"
-            @matches-updated="fetchInitialData"
           />
         </div>
       </main>
