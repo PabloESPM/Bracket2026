@@ -148,7 +148,7 @@
                 </span>
 
                 <button
-                  v-if="match.status !== 'finished'"
+                  v-if="match.status !== 'finished' || hasUnsavedChanges(match.id)"
                   @click="saveOfficialMatch(match, 'finished')"
                   class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-md"
                 >
@@ -410,6 +410,22 @@ async function saveOfficialMatch(match, targetStatus) {
   } finally {
     loading.value = false
   }
+}
+
+function hasUnsavedChanges(matchId) {
+  const match = officialMatches.value.find(m => m.id === matchId)
+  if (!match) return false
+  const score = scores.value[matchId]
+  if (!score) return false
+  
+  const currentHome = score.home
+  const currentAway = score.away
+  
+  // Normalize empty/null values for comparison
+  const normHome = currentHome === '' || currentHome === null || currentHome === undefined ? null : parseInt(currentHome)
+  const normAway = currentAway === '' || currentAway === null || currentAway === undefined ? null : parseInt(currentAway)
+  
+  return normHome !== match.home_score || normAway !== match.away_score
 }
 
 // Reset match scores

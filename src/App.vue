@@ -388,6 +388,7 @@ const computedGroups = computed(() => {
           scoreAway: hasScore ? match.away_score : null,
           played: hasScore, // Solo cuenta en standings si hay score real
           isLive: match.status === 'live', // Para mostrar indicador LIVE en UI
+          isFinished: match.status === 'finished', // Para mostrar indicador FINALIZADO en UI
           locked: true,
           start_time: match.start_time,
           date: formatDateStr(match.start_time),
@@ -402,6 +403,8 @@ const computedGroups = computed(() => {
           scoreHome: p ? p.home_predicted_score : null,
           scoreAway: p ? p.away_predicted_score : null,
           played: p !== undefined,
+          isLive: match.status === 'live',
+          isFinished: match.status === 'finished',
           locked: locked,
           start_time: match.start_time,
           date: formatDateStr(match.start_time),

@@ -239,6 +239,28 @@ export async function doSync() {
       continue
     }
 
+    if (isFinished && !hasValidScores) {
+      // Partido finalizado en plan gratuito pero sin scores en la API: solo actualizar status si ha cambiado
+      if (match.status !== 'finished') {
+        const updatePayload = { status: 'finished' }
+        try { updatePayload.api_match_id = apiMatch.id?.toString() } catch (_) {}
+        const { error } = await supabase.from('matches').update(updatePayload).eq('id', match.id)
+        if (error) {
+          if (error.message?.includes('api_match_id')) {
+            const { error: e2 } = await supabase.from('matches').update({ status: 'finished' }).eq('id', match.id)
+            if (e2) throw e2
+          } else {
+            throw error
+          }
+        }
+        match.status = 'finished'
+        updatedCount++
+        console.log(`[doSync] Partido ${match.id} finalizó (esperando ingreso manual de marcador)`)
+      }
+      continue
+    }
+
+
     // A partir de aquí: FINISHED con scores válidos (o IN_PLAY con livescores de pago)
     let winner = null
     if (match.stage !== 'group' && hasValidScores) {

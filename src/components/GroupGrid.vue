@@ -139,8 +139,10 @@
                 class="px-1 rounded text-[7px] md:text-[8px] font-extrabold"
                 :class="m.isLive
                   ? 'text-red-400 bg-red-950/40 border border-red-900/40'
-                  : 'text-indigo-400 bg-indigo-950/40 border border-indigo-900/40'"
-              >{{ m.isLive ? '🔴 EN VIVO' : '⏱ ' + m.time }}</span>
+                  : m.isFinished
+                    ? 'text-slate-400 bg-slate-900/40 border border-slate-800/40'
+                    : 'text-indigo-400 bg-indigo-950/40 border border-indigo-900/40'"
+              >{{ m.isLive ? '🔴 EN VIVO' : m.isFinished ? '🏁 FINAL' : '⏱ ' + m.time }}</span>
             </div>
           </div>
         </div>
