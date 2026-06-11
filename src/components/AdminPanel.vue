@@ -180,7 +180,7 @@ import {
   R32_SLOT_LABELS,
   propagateOfficialMatches
 } from '../utils/tournamentLogic.js'
-import { syncMatchesWithAPI } from '../utils/apiSync.js'
+// syncMatchesWithAPI se ejecuta via Netlify Function (server-side) para evitar CORS
 
 const emit = defineEmits(['matches-updated'])
 
@@ -198,8 +198,11 @@ async function handleAPISync() {
   errorMsg.value = ""
   successMsg.value = ""
   try {
-    const updatedCount = await syncMatchesWithAPI()
-    successMsg.value = `¡Sincronización completada! Se actualizaron marcadores de ${updatedCount} partidos.`
+    // Llamamos a la Netlify Function (servidor) para evitar bloqueos CORS del navegador
+    const response = await fetch('/.netlify/functions/sync-manual', { method: 'POST' })
+    const data = await response.json()
+    if (!data.ok) throw new Error(data.error || 'Error desconocido en la sincronización.')
+    successMsg.value = `✅ Sincronización completada en ${data.ms}ms. Se actualizaron ${data.updated} partido(s).`
     await fetchMatches()
     emit('matches-updated')
   } catch (err) {
