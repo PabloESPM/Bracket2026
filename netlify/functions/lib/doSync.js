@@ -61,7 +61,9 @@ export async function doSync() {
     const isFinished = apiMatch.status === 'FINISHED'
     const isLive     = apiMatch.status === 'IN_PLAY' || apiMatch.status === 'PAUSED'
 
-    if (!isFinished && !isLive) continue
+    let newStatus = 'scheduled'
+    if (isFinished) newStatus = 'finished'
+    else if (isLive) newStatus = 'live'
 
     const hScore = apiMatch.score?.fullTime?.home
     const aScore = apiMatch.score?.fullTime?.away
@@ -69,55 +71,70 @@ export async function doSync() {
     // scores cuando el partido está FINISHED con valores reales.
     const hasValidScores = hScore !== null && hScore !== undefined && aScore !== null && aScore !== undefined
 
-    const newStatus = isFinished ? 'finished' : 'live'
-
+    // 3.1. Caso particular de partidos en vivo en plan gratuito sin scores
     if (isLive && !hasValidScores) {
-      // Partido en curso en plan gratuito: solo actualizar status si ha cambiado
-      if (match.status !== 'live') {
-        const updatePayload = { status: 'live' }
-        // api_match_id es opcional - solo añadir si la columna existe en el schema
-        try { updatePayload.api_match_id = apiMatch.id?.toString() } catch (_) {}
+      const timeChanged = new Date(match.start_time).getTime() !== new Date(apiMatch.utcDate).getTime()
+      const apiIdChanged = match.api_match_id !== apiMatch.id?.toString()
+      const statusChanged = match.status !== 'live'
+      
+      if (statusChanged || timeChanged || apiIdChanged) {
+        const updatePayload = { 
+          status: 'live',
+          start_time: apiMatch.utcDate
+        }
+        if (apiMatch.id) updatePayload.api_match_id = apiMatch.id.toString()
+
         const { error } = await supabase.from('matches').update(updatePayload).eq('id', match.id)
         if (error) {
-          // Si el error es por columna inexistente, reintentar sin api_match_id
           if (error.message?.includes('api_match_id')) {
-            const { error: e2 } = await supabase.from('matches').update({ status: 'live' }).eq('id', match.id)
+            const { error: e2 } = await supabase.from('matches').update({ status: 'live', start_time: apiMatch.utcDate }).eq('id', match.id)
             if (e2) throw e2
           } else {
             throw error
           }
         }
         match.status = 'live'
+        match.start_time = apiMatch.utcDate
+        match.api_match_id = apiMatch.id?.toString()
         updatedCount++
-        console.log(`[doSync] Partido ${match.id} comenzó (score pendiente al final del partido)`)
+        console.log(`[doSync] Partido ${match.id} comenzó o actualizó horario/id`)
       }
       continue
     }
 
+    // 3.2. Caso particular de partidos finalizados en plan gratuito sin scores en API
     if (isFinished && !hasValidScores) {
-      // Partido finalizado en plan gratuito pero sin scores en la API: solo actualizar status si ha cambiado
-      if (match.status !== 'finished') {
-        const updatePayload = { status: 'finished' }
-        try { updatePayload.api_match_id = apiMatch.id?.toString() } catch (_) {}
+      const timeChanged = new Date(match.start_time).getTime() !== new Date(apiMatch.utcDate).getTime()
+      const apiIdChanged = match.api_match_id !== apiMatch.id?.toString()
+      const statusChanged = match.status !== 'finished'
+      
+      if (statusChanged || timeChanged || apiIdChanged) {
+        const updatePayload = { 
+          status: 'finished',
+          start_time: apiMatch.utcDate
+        }
+        if (apiMatch.id) updatePayload.api_match_id = apiMatch.id.toString()
+
         const { error } = await supabase.from('matches').update(updatePayload).eq('id', match.id)
         if (error) {
           if (error.message?.includes('api_match_id')) {
-            const { error: e2 } = await supabase.from('matches').update({ status: 'finished' }).eq('id', match.id)
+            const { error: e2 } = await supabase.from('matches').update({ status: 'finished', start_time: apiMatch.utcDate }).eq('id', match.id)
             if (e2) throw e2
           } else {
             throw error
           }
         }
         match.status = 'finished'
+        match.start_time = apiMatch.utcDate
+        match.api_match_id = apiMatch.id?.toString()
         updatedCount++
-        console.log(`[doSync] Partido ${match.id} finalizó (esperando ingreso manual de marcador)`)
+        console.log(`[doSync] Partido ${match.id} finalizó o actualizó horario/id (sin marcadores en API)`)
       }
       continue
     }
 
-
-    // A partir de aquí: FINISHED con scores válidos (o IN_PLAY con livescores de pago)
-    let winner = null
+    // 3.3. Partidos programados, o partidos en curso/finalizados con marcadores válidos
+    let winner = match.winner || null
     if (match.stage !== 'group' && hasValidScores) {
       if (hScore > aScore) winner = match.home_team
       else if (aScore > hScore) winner = match.away_team
@@ -127,21 +144,30 @@ export async function doSync() {
       }
     }
 
-    const changed = match.home_score !== hScore || match.away_score !== aScore || match.status !== newStatus
+    // Validar si hay cambios en scores, estado, hora de inicio o api_match_id
+    const timeChanged = new Date(match.start_time).getTime() !== new Date(apiMatch.utcDate).getTime()
+    const apiIdChanged = match.api_match_id !== apiMatch.id?.toString()
+    const scoreChanged = match.home_score !== hScore || match.away_score !== aScore
+    const statusChanged = match.status !== newStatus
+    const winnerChanged = match.winner !== winner
+
+    const changed = scoreChanged || statusChanged || winnerChanged || timeChanged || apiIdChanged
     if (!changed) continue
 
-    const { error: updateErr } = await supabase.from('matches').update({
+    const updatePayload = {
       home_score:   hScore,
       away_score:   aScore,
       winner:       winner,
       status:       newStatus,
-    }).eq('id', match.id)
+      start_time:   apiMatch.utcDate
+    }
+    if (apiMatch.id) updatePayload.api_match_id = apiMatch.id.toString()
 
+    const { error: updateErr } = await supabase.from('matches').update(updatePayload).eq('id', match.id)
     if (updateErr) {
-      // Si falla por api_match_id inexistente, reintentar sin él (la columna es opcional)
       if (updateErr.message?.includes('api_match_id')) {
         const { error: e2 } = await supabase.from('matches').update({
-          home_score: hScore, away_score: aScore, winner, status: newStatus
+          home_score: hScore, away_score: aScore, winner, status: newStatus, start_time: apiMatch.utcDate
         }).eq('id', match.id)
         if (e2) throw e2
       } else {
@@ -149,10 +175,14 @@ export async function doSync() {
       }
     }
 
-    match.home_score = hScore; match.away_score = aScore
-    match.winner = winner; match.status = isFinished ? 'finished' : 'live'
+    match.home_score = hScore
+    match.away_score = aScore
+    match.winner = winner
+    match.status = newStatus
+    match.start_time = apiMatch.utcDate
     match.api_match_id = apiMatch.id?.toString()
     updatedCount++
+    console.log(`[doSync] Partido ${match.id} actualizado (scores, status, time o id)`)
   }
 
   // 4. Propagar bracket si hubo cambios
