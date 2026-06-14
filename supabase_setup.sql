@@ -19,8 +19,16 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Cualquiera puede leer perfiles" ON public.profiles
     FOR SELECT USING (true);
 
+CREATE POLICY "No se permiten inserts directos en profiles" ON public.profiles
+    FOR INSERT WITH CHECK (false);
+
 CREATE POLICY "El usuario puede actualizar su propio perfil" ON public.profiles
-    FOR UPDATE USING (auth.uid() = id);
+    FOR UPDATE
+    USING (auth.uid() = id)
+    WITH CHECK (
+        auth.uid() = id
+        AND is_admin = (SELECT p.is_admin FROM public.profiles p WHERE p.id = auth.uid())
+    );
 
 -- 2. Tabla de Partidos Oficiales (matches)
 CREATE TABLE IF NOT EXISTS public.matches (
@@ -96,7 +104,7 @@ BEGIN
     VALUES (
         new.id,
         v_username,
-        CASE WHEN LOWER(v_username) = 'administrador' THEN true ELSE false END
+        false  -- SIEMPRE false. El admin se asigna manualmente desde Supabase Dashboard.
     );
     RETURN new;
 END;

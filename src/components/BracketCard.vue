@@ -22,7 +22,7 @@
     >
       <div v-if="matchData.home" class="flex items-center gap-1.5 md:gap-2" :class="!readOnly ? 'cursor-grab active:cursor-grabbing' : ''" :draggable="!readOnly" @dragstart="onDragStart(matchData.home, $event)">
         <div class="flex items-center gap-1.5 md:gap-2" @click="setWinner(matchData.home)">
-          <img class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.home)" alt="">
+          <img v-if="getFlagUrl(matchData.home)" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.home)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
           <span
             class="font-bold text-[10px] md:text-[11px] truncate max-w-[90px] md:max-w-[110px]"
             :class="matchData.winner === matchData.home ? 'text-blue-400 font-extrabold' : 'text-slate-300'"
@@ -64,7 +64,7 @@
     >
       <div v-if="matchData.away" class="flex items-center gap-1.5 md:gap-2" :class="!readOnly ? 'cursor-grab active:cursor-grabbing' : ''" :draggable="!readOnly" @dragstart="onDragStart(matchData.away, $event)">
         <div class="flex items-center gap-1.5 md:gap-2" @click="setWinner(matchData.away)">
-          <img class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.away)" alt="">
+          <img v-if="getFlagUrl(matchData.away)" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.away)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
           <span
             class="font-bold text-[10px] md:text-[11px] truncate max-w-[90px] md:max-w-[110px]"
             :class="matchData.winner === matchData.away ? 'text-blue-400 font-extrabold' : 'text-slate-300'"
@@ -110,7 +110,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { TEAMS_INFO, CONF_CLASSES, R32_SLOT_LABELS, MATCH_SCHEDULE } from '../utils/tournamentLogic.js'
+import { R32_SLOT_LABELS, MATCH_SCHEDULE } from '../utils/tournamentLogic.js'
+import { getFlagUrl, getConfClass } from '../utils/helpers.js'
 
 const props = defineProps({
   roundKey: String,
@@ -141,18 +142,7 @@ const schedule = computed(() => {
   return (MATCH_SCHEDULE[props.roundKey] && MATCH_SCHEDULE[props.roundKey][props.matchId]) || null
 })
 
-function getFlagUrl(team) {
-  const info = TEAMS_INFO[team]
-  if (!info) return ''
-  return `https://flagcdn.com/24x18/${info.flag}.png`
-}
 
-function getConfClass(team) {
-  if (!team) return ''
-  const info = TEAMS_INFO[team]
-  if (!info) return ''
-  return CONF_CLASSES[info.conf] || ''
-}
 
 function setWinner(team) {
   if (props.readOnly) return

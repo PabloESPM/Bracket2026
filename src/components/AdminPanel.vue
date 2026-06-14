@@ -77,7 +77,7 @@
                   {{ getStageLabel(match.stage) }}
                 </div>
                 <div class="text-xs text-slate-300 font-medium mt-0.5">
-                  📅 {{ formatDateStr(match.start_time) }} | ⏱ {{ formatTimeStr(match.start_time) }}
+                  📅 {{ formatDateStr(match.start_time) }} | ⏱ {{ formatTimeStr(match.start_time) }} h
                 </div>
               </div>
             </div>
@@ -87,7 +87,7 @@
               <!-- Home -->
               <div class="flex items-center gap-2 w-32 md:w-40 justify-end text-right min-w-0">
                 <span class="text-xs font-bold text-slate-200 truncate">{{ match.home_team }}</span>
-                <img v-if="getFlag(match.home_team)" class="w-6 h-4 object-cover rounded shadow" :src="getFlag(match.home_team)" alt="">
+                <img v-if="getFlagUrl(match.home_team)" class="w-6 h-4 object-cover rounded shadow" :src="getFlagUrl(match.home_team, 32, 24)" alt="" width="32" height="24" loading="lazy">
               </div>
 
               <!-- Inputs -->
@@ -111,7 +111,7 @@
 
               <!-- Away -->
               <div class="flex items-center gap-2 w-32 md:w-40 justify-start text-left min-w-0">
-                <img v-if="getFlag(match.away_team)" class="w-6 h-4 object-cover rounded shadow" :src="getFlag(match.away_team)" alt="">
+                <img v-if="getFlagUrl(match.away_team)" class="w-6 h-4 object-cover rounded shadow" :src="getFlagUrl(match.away_team, 32, 24)" alt="" width="32" height="24" loading="lazy">
                 <span class="text-xs font-bold text-slate-200 truncate">{{ match.away_team }}</span>
               </div>
             </div>
@@ -174,12 +174,12 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { supabase } from '../supabaseClient.js'
 import {
-  TEAMS_INFO,
   GROUP_STAGE_SCHEDULE,
   MATCH_SCHEDULE,
   R32_SLOT_LABELS,
   propagateOfficialMatches
 } from '../utils/tournamentLogic.js'
+import { getFlagUrl, formatDateStr, formatTimeStr } from '../utils/helpers.js'
 // syncMatchesWithAPI se ejecuta via Netlify Function (server-side) para evitar CORS
 
 const emit = defineEmits(['matches-updated'])
@@ -198,8 +198,15 @@ async function handleAPISync() {
   errorMsg.value = ""
   successMsg.value = ""
   try {
-    // Llamamos a la Netlify Function (servidor) para evitar bloqueos CORS del navegador
-    const response = await fetch('/.netlify/functions/sync-manual', { method: 'POST' })
+    // Obtener el token de acceso actual del usuario para autenticar la petición
+    const { data: { session } } = await supabase.auth.getSession()
+    const response = await fetch('/.netlify/functions/sync-manual', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session?.access_token || ''}`,
+        'Content-Type': 'application/json'
+      }
+    })
     const data = await response.json()
     if (!data.ok) throw new Error(data.error || 'Error desconocido en la sincronización.')
     successMsg.value = `✅ Sincronización completada en ${data.ms}ms. Se actualizaron ${data.updated} partido(s).`
@@ -236,7 +243,7 @@ async function fetchMatches() {
   try {
     const { data, error } = await supabase
       .from('matches')
-      .select('*')
+      .select('id, home_team, away_team, home_score, away_score, winner, status, start_time, stage, api_match_id')
       .order('start_time', { ascending: true })
 
     if (error) throw error
@@ -269,11 +276,7 @@ const filteredMatches = computed(() => {
   return officialMatches.value.filter(m => m.stage === activeSubTab.value)
 })
 
-function getFlag(team) {
-  const info = TEAMS_INFO[team]
-  if (!info) return ''
-  return `https://flagcdn.com/32x24/${info.flag}.png`
-}
+
 
 function getStageLabel(stage) {
   const labels = {
@@ -294,17 +297,7 @@ function getStatusClass(status) {
   return 'text-slate-400 border-slate-800 bg-slate-950/40'
 }
 
-function formatDateStr(isoStr) {
-  if (!isoStr) return ''
-  const date = new Date(isoStr)
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
-}
 
-function formatTimeStr(isoStr) {
-  if (!isoStr) return ''
-  const date = new Date(isoStr)
-  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + ' h'
-}
 
 function setMatchWinner(matchId, team) {
   if (winnerMap.value[matchId] === team) {

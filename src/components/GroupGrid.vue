@@ -77,7 +77,7 @@
               <td class="py-1.5 md:py-2 px-0.5 md:px-1 text-center font-bold text-slate-500">{{ idx + 1 }}</td>
               <td class="py-1.5 md:py-2 px-0.5 md:px-1 font-semibold text-slate-200 flex items-center gap-1.5 min-w-[90px] md:min-w-[100px]">
                 <span class="text-[9px] mr-0.5">{{ idx < 2 ? '🟢' : idx === 2 ? '🟡' : '🔴' }}</span>
-                <img class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm shadow-sm" :src="getFlagUrl(s.team)" alt="">
+                <img v-if="getFlagUrl(s.team)" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm shadow-sm" :src="getFlagUrl(s.team)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
                 <span class="truncate max-w-[65px] sm:max-w-[80px] md:max-w-[95px]">{{ s.team }}</span>
               </td>
               <td class="py-1.5 md:py-2 px-0.5 md:px-1 text-center text-slate-400">{{ s.pj }}</td>
@@ -105,7 +105,7 @@
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-1.5 md:gap-2 w-[42%] justify-end text-right">
                 <span class="font-medium text-[10px] md:text-[11px] text-slate-300 truncate">{{ m.home }}</span>
-                <img class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm" :src="getFlagUrl(m.home)" alt="">
+                 <img v-if="getFlagUrl(m.home)" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm" :src="getFlagUrl(m.home)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
               </div>
               
             <!-- Score / vs badge -->
@@ -127,7 +127,7 @@
               </span>
 
               <div class="flex items-center gap-1.5 md:gap-2 w-[42%] justify-start text-left">
-                <img class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm" :src="getFlagUrl(m.away)" alt="">
+                 <img v-if="getFlagUrl(m.away)" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm" :src="getFlagUrl(m.away)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
                 <span class="font-medium text-[10px] md:text-[11px] text-slate-300 truncate">{{ m.away }}</span>
               </div>
             </div>
@@ -153,7 +153,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import { TEAMS_INFO, CONF_CLASSES } from '../utils/tournamentLogic.js'
+import { getFlagUrl, getConfClass } from '../utils/helpers.js'
+
 
 const props = defineProps({
   groups: {
@@ -188,17 +189,7 @@ function drop(targetGKey, targetIdx) {
   emit('reorder-group', targetGKey, dragSourceRowIdx, targetIdx)
 }
 
-function getFlagUrl(team) {
-  const info = TEAMS_INFO[team]
-  if (!info) return ''
-  return `https://flagcdn.com/24x18/${info.flag}.png`
-}
 
-function getConfClass(team) {
-  const info = TEAMS_INFO[team]
-  if (!info) return ''
-  return CONF_CLASSES[info.conf] || ''
-}
 
 function editMatch(gKey, idx) {
   if (props.readOnly) return
@@ -206,7 +197,8 @@ function editMatch(gKey, idx) {
 }
 
 function isLocked(match) {
+  if (match.locked !== undefined) return match.locked
   if (!match.start_time) return false
-  return new Date() >= new Date(match.start_time)
+  return new Date().getTime() >= new Date(match.start_time).getTime() - 10 * 60 * 1000
 }
 </script>

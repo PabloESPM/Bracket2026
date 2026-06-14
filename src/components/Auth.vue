@@ -154,6 +154,7 @@ async function handleSubmit() {
       })
       if (error) throw error
       
+      loading.value = false
       emit('auth-success', data.user)
     }
   } catch (err) {

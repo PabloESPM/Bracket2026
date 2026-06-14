@@ -67,7 +67,7 @@
               class="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors text-[11px] md:text-xs"
             >
               <td class="p-3 font-semibold text-slate-100 flex items-center gap-2">
-                <img class="w-4.5 h-3 object-cover rounded-sm shadow-sm border border-slate-800" :src="getFlagUrl(p.team)" alt="">
+                <img v-if="getFlagUrl(p.team)" class="w-4.5 h-3 object-cover rounded-sm shadow-sm border border-slate-800" :src="getFlagUrl(p.team)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
                 <span class="truncate max-w-[100px] md:max-w-none">{{ p.team }}</span>
               </td>
               <td class="p-3 text-center text-slate-400">100%</td>
@@ -94,6 +94,7 @@ import {
   selectBestThirds,
   getR32Mapping
 } from '../utils/tournamentLogic.js'
+import { getFlagUrl } from '../utils/helpers.js'
 import {
   simulateMatchScore,
   simulateRemainingBracket
@@ -114,11 +115,7 @@ const simulating = ref(false)
 const hasResults = ref(false)
 const results = ref([])
 
-function getFlagUrl(team) {
-  const info = TEAMS_INFO[team]
-  if (!info) return ''
-  return `https://flagcdn.com/24x18/${info.flag}.png`
-}
+
 
 function getPillClass(pct) {
   if (pct > 70) return 'text-emerald-400'
@@ -137,25 +134,24 @@ function runSimulation() {
   simulating.value = true
   hasResults.value = false
 
-  setTimeout(() => {
-    const iterations = 1000
-    const counts = {}
+  const iterations = 1000
+  const chunkSize = 50
+  const counts = {}
 
-    // Initialize counts
-    Object.keys(TEAMS_INFO).forEach(tName => {
-      counts[tName] = {
-        team: tName,
-        r32: 0,
-        r16: 0,
-        qf: 0,
-        sf: 0,
-        final: 0,
-        champion: 0
-      }
-    })
+  // Initialize counts
+  Object.keys(TEAMS_INFO).forEach(tName => {
+    counts[tName] = {
+      team: tName,
+      r32: 0, r16: 0, qf: 0, sf: 0, final: 0, champion: 0
+    }
+  })
 
-    // Perform Monte Carlo runs
-    for (let i = 0; i < iterations; i++) {
+  let completed = 0
+
+  function processChunk() {
+    const end = Math.min(completed + chunkSize, iterations)
+
+    for (let i = completed; i < end; i++) {
       // 1. Clone the current predictions status
       const iterGroups = {}
       Object.keys(props.groups).forEach(gKey => {
@@ -207,7 +203,6 @@ function runSimulation() {
         iterBracket.r32[pKey].away = mapping[pKey].away
       })
 
-      // Propagate matches and count stage advances
       // Count group/r32 stage advances
       Object.keys(iterGroups).forEach(gKey => {
         const standings = iterGroups[gKey].standings
@@ -247,30 +242,40 @@ function runSimulation() {
       if (iterBracket.champion) counts[iterBracket.champion].champion++
     }
 
-    // Compile results
-    results.value = Object.values(counts).map(c => ({
-      team: c.team,
-      r32: Math.round((c.r32 / iterations) * 100),
-      r16: Math.round((c.r16 / iterations) * 100),
-      qf: Math.round((c.qf / iterations) * 100),
-      sf: Math.round((c.sf / iterations) * 100),
-      final: Math.round((c.final / iterations) * 100),
-      champion: Math.round((c.champion / iterations) * 100)
-    }))
+    completed = end
 
-    // Sort: Champion % desc, then final %, then sf %
-    results.value.sort((a, b) => {
-      if (b.champion !== a.champion) return b.champion - a.champion
-      if (b.final !== a.final) return b.final - a.final
-      if (b.sf !== a.sf) return b.sf - a.sf
-      if (b.qf !== a.qf) return b.qf - a.qf
-      if (b.r16 !== a.r16) return b.r16 - a.r16
-      if (b.r32 !== a.r32) return b.r32 - a.r32
-      return a.team.localeCompare(b.team)
-    })
+    if (completed < iterations) {
+      // Ceder el hilo al navegador y continuar con el siguiente chunk
+      setTimeout(processChunk, 0)
+    } else {
+      // Compilar resultados finales
+      results.value = Object.values(counts).map(c => ({
+        team: c.team,
+        r32: Math.round((c.r32 / iterations) * 100),
+        r16: Math.round((c.r16 / iterations) * 100),
+        qf: Math.round((c.qf / iterations) * 100),
+        sf: Math.round((c.sf / iterations) * 100),
+        final: Math.round((c.final / iterations) * 100),
+        champion: Math.round((c.champion / iterations) * 100)
+      }))
 
-    simulating.value = false
-    hasResults.value = true
-  }, 50)
+      // Sort: Champion % desc, then final %, then sf %
+      results.value.sort((a, b) => {
+        if (b.champion !== a.champion) return b.champion - a.champion
+        if (b.final !== a.final) return b.final - a.final
+        if (b.sf !== a.sf) return b.sf - a.sf
+        if (b.qf !== a.qf) return b.qf - a.qf
+        if (b.r16 !== a.r16) return b.r16 - a.r16
+        if (b.r32 !== a.r32) return b.r32 - a.r32
+        return a.team.localeCompare(b.team)
+      })
+
+      simulating.value = false
+      hasResults.value = true
+    }
+  }
+
+  // Iniciar el primer chunk con un pequeño delay para que el UI muestre "Simulando..."
+  setTimeout(processChunk, 16)
 }
 </script>

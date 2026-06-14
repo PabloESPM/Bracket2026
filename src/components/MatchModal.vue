@@ -19,34 +19,36 @@
       <div class="flex items-center justify-between py-4 md:py-6 gap-2 md:gap-4">
         <!-- Home Team -->
         <div class="flex flex-col items-center flex-1 text-center min-w-0">
-          <img class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(homeTeam)" alt="">
+          <img v-if="getFlagUrl(homeTeam)" class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(homeTeam, 64, 48)" @error="$event.target.style.display = 'none'" :alt="`Bandera de ${homeTeam}`" width="64" height="48" loading="lazy">
           <span class="font-bold text-xs md:text-sm text-slate-200 truncate w-full px-1">{{ homeTeam }}</span>
         </div>
 
         <!-- Input Score -->
         <div class="flex items-center gap-1.5 md:gap-2 shrink-0">
-          <input
-            type="number"
-            v-model="scoreHomeVal"
-            min="0"
-            max="99"
-            :disabled="locked"
-            class="w-12 h-12 md:w-14 md:h-14 bg-slate-950 border border-slate-800 text-center font-extrabold text-xl md:text-2xl rounded-lg md:rounded-xl text-white focus:outline-none focus:border-blue-500 disabled:opacity-60"
-          >
+            <input
+              type="number"
+              v-model="scoreHomeVal"
+              min="0"
+              max="99"
+              :disabled="locked"
+              :aria-label="`Goles de ${homeTeam}`"
+              class="w-12 h-12 md:w-14 md:h-14 bg-slate-950 border border-slate-800 text-center font-extrabold text-xl md:text-2xl rounded-lg md:rounded-xl text-white focus:outline-none focus:border-blue-500 disabled:opacity-60"
+            >
           <span class="text-slate-500 text-lg md:text-xl font-bold">:</span>
-          <input
-            type="number"
-            v-model="scoreAwayVal"
-            min="0"
-            max="99"
-            :disabled="locked"
-            class="w-12 h-12 md:w-14 md:h-14 bg-slate-950 border border-slate-800 text-center font-extrabold text-xl md:text-2xl rounded-lg md:rounded-xl text-white focus:outline-none focus:border-blue-500 disabled:opacity-60"
-          >
+            <input
+              type="number"
+              v-model="scoreAwayVal"
+              min="0"
+              max="99"
+              :disabled="locked"
+              :aria-label="`Goles de ${awayTeam}`"
+              class="w-12 h-12 md:w-14 md:h-14 bg-slate-950 border border-slate-800 text-center font-extrabold text-xl md:text-2xl rounded-lg md:rounded-xl text-white focus:outline-none focus:border-blue-500 disabled:opacity-60"
+            >
         </div>
 
         <!-- Away Team -->
         <div class="flex flex-col items-center flex-1 text-center min-w-0">
-          <img class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(awayTeam)" alt="">
+          <img v-if="getFlagUrl(awayTeam)" class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(awayTeam, 64, 48)" @error="$event.target.style.display = 'none'" :alt="`Bandera de ${awayTeam}`" width="64" height="48" loading="lazy">
           <span class="font-bold text-xs md:text-sm text-slate-200 truncate w-full px-1">{{ awayTeam }}</span>
         </div>
       </div>
@@ -79,7 +81,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { TEAMS_INFO } from '../utils/tournamentLogic.js'
+import { getFlagUrl } from '../utils/helpers.js'
 
 const props = defineProps({
   show: Boolean,
@@ -102,18 +104,18 @@ watch(() => props.show, (newShow) => {
   }
 })
 
-function getFlagUrl(team) {
-  const info = TEAMS_INFO[team]
-  if (!info) return ''
-  return `https://flagcdn.com/64x48/${info.flag}.png`
-}
-
 function confirm() {
   if (scoreHomeVal.value === '' || scoreAwayVal.value === '') {
     alert('Por favor introduce puntuaciones para ambos equipos.')
     return
   }
-  emit('save', parseInt(scoreHomeVal.value), parseInt(scoreAwayVal.value))
+  const home = parseInt(scoreHomeVal.value)
+  const away = parseInt(scoreAwayVal.value)
+  if (isNaN(home) || isNaN(away) || home < 0 || away < 0 || home > 99 || away > 99) {
+    alert('Las puntuaciones deben ser números enteros entre 0 y 99.')
+    return
+  }
+  emit('save', home, away)
 }
 
 function clear() {
