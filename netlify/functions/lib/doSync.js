@@ -9,7 +9,7 @@ const FD_API_URL  = 'https://api.football-data.org/v4'
 const FD_API_KEY = process.env.FD_API_KEY
 const COMPETITION = 'WC'
 
-import { TEAM_TRANSLATIONS, propagateOfficialMatches } from '../../shared/tournamentCore.js'
+import { TEAM_TRANSLATIONS, propagateOfficialMatches } from '../shared/tournamentCore.js'
 
 export async function doSync() {
   const t0 = Date.now()

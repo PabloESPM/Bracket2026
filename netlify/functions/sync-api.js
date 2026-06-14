@@ -1,8 +1,6 @@
-/**
- * Netlify Scheduled Function: sync-api
- * Se ejecuta automáticamente cada 5 minutos via cron job.
- * URL de disparo automático: cron */5 * * * *
- */
+// Netlify Scheduled Function: sync-api
+// Se ejecuta automáticamente cada 5 minutos via cron job.
+// URL de disparo automático: cron */5 * * * *
 
 import { doSync } from './lib/doSync.js'
 

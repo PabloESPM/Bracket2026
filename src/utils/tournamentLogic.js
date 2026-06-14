@@ -1,6 +1,6 @@
 // FIFA World Cup 2026 static data and logical calculations
 
-export { GROUPS_DATA, TEAMS_INFO, TEAM_TRANSLATIONS, calculateGroupStandings, selectBestThirds, getR32Mapping, propagateOfficialMatches } from '../../shared/tournamentCore.js'
+export { GROUPS_DATA, TEAMS_INFO, TEAM_TRANSLATIONS, calculateGroupStandings, selectBestThirds, getR32Mapping, propagateOfficialMatches } from '../../netlify/functions/shared/tournamentCore.js'
 
 export const GROUP_STAGE_SCHEDULE = {
   A: [
