@@ -101,6 +101,7 @@ const emit = defineEmits(['change-tab', 'logout', 'toggle-theme', 'open-login'])
 
 const visibleTabs = computed(() => {
   const tabs = [
+    { id: 'calendar', name: 'Calendario' },
     { id: 'groups', name: 'Grupos' },
     { id: 'bracket', name: 'Eliminatorias' },
     { id: 'simulation', name: 'Simulación' },

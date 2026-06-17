@@ -61,6 +61,17 @@
 
         <!-- 4. Other tabs (Rendered once matches are populated) -->
         <div v-else>
+          <!-- 0. CALENDAR -->
+          <CalendarTab
+            v-if="activeTab === 'calendar'"
+            :officialMatches="officialMatches"
+            :userPredictions="userPredictions"
+            :computedGroups="computedGroups"
+            :computedBracket="computedBracket"
+            :readOnly="chismosoMode || !user"
+            @edit-match="openCalendarMatchEdit"
+          />
+
           <!-- 1. LEADERBOARD -->
           <Leaderboard
             v-if="activeTab === 'leaderboard'"
@@ -104,9 +115,11 @@
         :scoreHome="modalMatch?.scoreHome"
         :scoreAway="modalMatch?.scoreAway"
         :locked="modalMatch?.locked"
+        :isKnockout="modalMatch?.stage && modalMatch?.stage !== 'group'"
+        :predictedWinner="modalMatch?.winner || ''"
         @close="closeMatchModal"
-        @save="savePrediction"
-        @clear="clearPrediction"
+        @save="handleModalSave"
+        @clear="clearCalendarPrediction"
       />
 
       <!-- Authentication Modal Overlay -->
@@ -137,6 +150,7 @@ import GroupGrid from './components/GroupGrid.vue'
 import MatchModal from './components/MatchModal.vue'
 
 // Lazy-loaded components
+const CalendarTab = defineAsyncComponent(() => import('./components/CalendarTab.vue'))
 const Leaderboard = defineAsyncComponent(() => import('./components/Leaderboard.vue'))
 const BracketTree = defineAsyncComponent(() => import('./components/BracketTree.vue'))
 const SimulationTab = defineAsyncComponent(() => import('./components/SimulationTab.vue'))
@@ -156,7 +170,7 @@ import { usePredictions } from './composables/usePredictions.js'
 import { useChismoso } from './composables/useChismoso.js'
 
 // 1. Central UI/Database Refs
-const activeTab = ref('groups')
+const activeTab = ref('calendar')
 const officialMatches = ref([])
 const userPredictions = ref([])
 const leaderboard = ref([])
@@ -412,6 +426,58 @@ function openMatchEdit(groupKey, idx) {
     index: idx
   }
   showModal.value = true
+}
+
+function openCalendarMatchEdit(match) {
+  if (match.stage === 'group') {
+    const groupKey = match.id.charAt(0)
+    const groupMatches = computedGroups.value[groupKey]?.matches || []
+    const idx = groupMatches.findIndex(m => m.id === match.id)
+    if (idx !== -1) {
+      openMatchEdit(groupKey, idx)
+    } else {
+      modalMatch.value = {
+        id: match.id,
+        home: match.home,
+        away: match.away,
+        scoreHome: match.scoreHome,
+        scoreAway: match.scoreAway,
+        locked: match.locked,
+        stage: 'group'
+      }
+      showModal.value = true
+    }
+  } else {
+    modalMatch.value = {
+      id: match.id,
+      home: match.home,
+      away: match.away,
+      winner: match.winner,
+      locked: match.locked,
+      stage: match.stage,
+      roundKey: match.roundKey
+    }
+    showModal.value = true
+  }
+}
+
+async function handleModalSave(scoreHomeOrWinner, scoreAway) {
+  if (modalMatch.value?.stage && modalMatch.value.stage !== 'group') {
+    const winnerTeam = scoreHomeOrWinner
+    await handleBracketWinner(modalMatch.value.roundKey, modalMatch.value.id, winnerTeam)
+    closeMatchModal()
+  } else {
+    await savePrediction(scoreHomeOrWinner, scoreAway)
+  }
+}
+
+async function clearCalendarPrediction() {
+  if (modalMatch.value?.stage && modalMatch.value.stage !== 'group') {
+    await handleBracketWinner(modalMatch.value.roundKey, modalMatch.value.id, null)
+    closeMatchModal()
+  } else {
+    await clearPrediction()
+  }
 }
 
 function closeMatchModal() {
