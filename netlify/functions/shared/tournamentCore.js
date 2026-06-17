@@ -167,6 +167,12 @@ export function selectBestThirds(groups) {
     if (b.pts !== a.pts) return b.pts - a.pts
     if (b.dg !== a.dg) return b.dg - a.dg
     if (b.gf !== a.gf) return b.gf - a.gf
+    
+    // Fallback: FIFA Ranking (rating in TEAMS_INFO)
+    const ratingA = TEAMS_INFO[a.team]?.rating || 70
+    const ratingB = TEAMS_INFO[b.team]?.rating || 70
+    if (ratingB !== ratingA) return ratingB - ratingA
+    
     return a.group.localeCompare(b.group)
   })
 
@@ -192,6 +198,12 @@ export function getR32Mapping(groups) {
     if (b.pts !== a.pts) return b.pts - a.pts
     if (b.dg !== a.dg) return b.dg - a.dg
     if (b.gf !== a.gf) return b.gf - a.gf
+    
+    // Fallback: FIFA Ranking (rating in TEAMS_INFO)
+    const ratingA = TEAMS_INFO[a.team]?.rating || 70
+    const ratingB = TEAMS_INFO[b.team]?.rating || 70
+    if (ratingB !== ratingA) return ratingB - ratingA
+    
     return a.group.localeCompare(b.group)
   })
   const bestEight = thirds.slice(0, 8)
