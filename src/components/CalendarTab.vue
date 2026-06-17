@@ -184,7 +184,7 @@
           <div
             v-for="(cell, cellIdx) in calendarDays"
             :key="cellIdx"
-            @click="selectDate(cell.dateString)"
+            @click="selectDayAndScroll(cell.dateString)"
             class="aspect-square p-1 md:p-2 border rounded-xl flex flex-col justify-between relative transition duration-150 cursor-pointer group select-none min-h-[55px] md:min-h-[75px]"
             :class="[
               cell.isCurrentMonth
@@ -209,21 +209,29 @@
             </span>
 
             <!-- Indicators of Matches in cell -->
-            <div class="w-full flex flex-col items-center justify-end space-y-0.5 mt-auto">
-              <!-- Active filters count -->
-              <span
-                v-if="filteredMatchesByDate[cell.dateString]?.length > 0"
-                class="px-1.5 py-0.5 rounded-full text-[8px] md:text-[9px] font-black leading-none bg-blue-950 border border-blue-800 text-blue-400 transition group-hover:scale-105"
-                :class="selectedDateStr === cell.dateString ? 'bg-blue-500 text-white border-blue-400' : ''"
+            <div class="w-full flex flex-col items-center justify-end mt-auto min-h-[36px]">
+              <!-- Tags with flag emojis of matchups -->
+              <div 
+                v-if="filteredMatchesByDate[cell.dateString]?.length > 0" 
+                class="flex flex-wrap gap-1 justify-center max-h-[44px] overflow-y-auto w-full pb-0.5 scrollbar-none"
               >
-                {{ filteredMatchesByDate[cell.dateString].length }}
-                <span class="hidden md:inline">{{ filteredMatchesByDate[cell.dateString].length === 1 ? 'partido' : 'partidos' }}</span>
-              </span>
-
+                <span 
+                  v-for="m in filteredMatchesByDate[cell.dateString]" 
+                  :key="m.id"
+                  @click.stop="selectMatchAndScroll(cell.dateString, m.id)"
+                  class="inline-flex items-center justify-center px-1 py-0.5 rounded bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-slate-700/80 text-[10px] md:text-[11px] font-black leading-none cursor-pointer transition select-none shadow-sm gap-0.5 shrink-0"
+                  :title="`${m.home || 'Por definir'} vs ${m.away || 'Por definir'} (${m.id})`"
+                >
+                  <span class="text-xs md:text-sm leading-none flex items-center">{{ getTeamFlagEmoji(m.home) }}</span>
+                  <span class="text-[8px] md:text-[9px] text-slate-500 font-bold leading-none align-middle px-0.5">vs</span>
+                  <span class="text-xs md:text-sm leading-none flex items-center">{{ getTeamFlagEmoji(m.away) }}</span>
+                </span>
+              </div>
+              
               <!-- Tiny indicator for matching countries when search query is active -->
               <div
                 v-else-if="matchesByDate[cell.dateString]?.length > 0 && searchQuery"
-                class="w-2 h-2 rounded-full bg-slate-700"
+                class="w-1.5 h-1.5 rounded-full bg-slate-700 mb-1"
                 title="Hay partidos pero no coinciden con los filtros"
               ></div>
             </div>
@@ -298,7 +306,15 @@
     </div>
 
     <!-- Selected Day Matches Detail Section -->
-    <div class="bg-slate-900 border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden p-4 md:p-6 space-y-4">
+    <div 
+      id="selected-day-detail-section"
+      class="bg-slate-900 border rounded-2xl shadow-xl overflow-hidden p-4 md:p-6 space-y-4 transition-all duration-500"
+      :class="[
+        activeHighlightSection 
+          ? 'ring-2 md:ring-4 ring-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.5)] border-indigo-400 bg-indigo-950/5' 
+          : 'border-slate-800/80'
+      ]"
+    >
       <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-col sm:flex-row gap-2">
         <h3 class="font-extrabold text-sm md:text-base text-slate-200 flex items-center gap-2">
           <span>⚽</span> Partidos el {{ formatDateLong(selectedDateStr) }}
@@ -331,9 +347,16 @@
         <div
           v-for="match in selectedDayMatchesFiltered"
           :key="match.id"
+          :id="`match-card-detail-${match.id}`"
           @click="editMatch(match)"
-          class="flex flex-col bg-slate-950/40 hover:bg-slate-800/40 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-4 transition-all duration-200 cursor-pointer space-y-3 relative group"
-          :class="[getConfClass(match.home), match.locked && !match.played && !match.isLive ? 'border-amber-900/40' : '']"
+          class="flex flex-col bg-slate-950/40 hover:bg-slate-800/40 border rounded-2xl p-4 cursor-pointer space-y-3 relative group transition-all duration-500"
+          :class="[
+            getConfClass(match.home), 
+            match.locked && !match.played && !match.isLive ? 'border-amber-900/40' : '',
+            activeHighlightMatchId === match.id 
+              ? 'ring-2 md:ring-4 ring-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.6)] border-blue-400 scale-[1.01] md:scale-[1.02] bg-blue-950/10' 
+              : 'border-slate-800 hover:border-slate-700/80'
+          ]"
         >
           <!-- Match Card Header -->
           <div class="flex items-center justify-between text-[10px] text-slate-400 font-bold border-b border-slate-800/50 pb-2">
@@ -475,9 +498,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { getFlagUrl, getConfClass, formatTimeStr } from '../utils/helpers.js'
-import { GROUP_STAGE_SCHEDULE, MATCH_SCHEDULE, R32_SLOT_LABELS } from '../utils/tournamentLogic.js'
+import { GROUP_STAGE_SCHEDULE, MATCH_SCHEDULE, R32_SLOT_LABELS, TEAM_TRANSLATIONS, TEAMS_INFO } from '../utils/tournamentLogic.js'
 
 const props = defineProps({
   officialMatches: {
@@ -503,6 +526,18 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['edit-match'])
+
+// Highlight and Scroll States
+const activeHighlightMatchId = ref(null)
+const activeHighlightSection = ref(false)
+let highlightTimeout = null
+
+function clearHighlightTimeout() {
+  if (highlightTimeout) {
+    clearTimeout(highlightTimeout)
+    highlightTimeout = null
+  }
+}
 
 // Calendar State
 const currentYear = ref(2026)
@@ -814,9 +849,66 @@ const selectedDayMatchesFiltered = computed(() => {
   return filteredMatchesByDate.value[selectedDateStr.value] || []
 })
 
+// Convert team name to regional flag emoji
+function getTeamFlagEmoji(teamName) {
+  if (!teamName) return '🏳️'
+  const cleaned = teamName.trim()
+  const translated = TEAM_TRANSLATIONS[cleaned] || cleaned
+  const info = TEAMS_INFO[translated]
+  if (!info) return '🏳️'
+  const flagCode = info.flag
+  if (flagCode === 'gb-sct') return '🏴󠁧󠁢󠁳󠁣󠁴󠁿'
+  if (flagCode === 'gb-eng') return '🏴󠁧󠁢󠁥󠁮󠁧󠁿'
+  if (!flagCode || flagCode.length !== 2) return '🏳️'
+  
+  const codePoints = flagCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
+
 // Select date handlers
 function selectDate(dateStr) {
   selectedDateStr.value = dateStr
+}
+
+// Day Cell click: Scroll to details container and highlight it
+async function selectDayAndScroll(dateStr) {
+  selectedDateStr.value = dateStr
+  
+  clearHighlightTimeout()
+  activeHighlightMatchId.value = null
+  activeHighlightSection.value = true
+  
+  highlightTimeout = setTimeout(() => {
+    activeHighlightSection.value = false
+  }, 2500)
+  
+  await nextTick()
+  const element = document.getElementById('selected-day-detail-section')
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+// Match Tag click: Scroll to specific match card and highlight it
+async function selectMatchAndScroll(dateStr, matchId) {
+  selectedDateStr.value = dateStr
+  
+  clearHighlightTimeout()
+  activeHighlightSection.value = false
+  activeHighlightMatchId.value = matchId
+  
+  highlightTimeout = setTimeout(() => {
+    activeHighlightMatchId.value = null
+  }, 2500)
+  
+  await nextTick()
+  const element = document.getElementById(`match-card-detail-${matchId}`)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 }
 
 function selectMonthAndSwitchView(monthIdx) {
@@ -826,8 +918,9 @@ function selectMonthAndSwitchView(monthIdx) {
 
 function selectDayAndSwitchView(monthIdx, day) {
   currentMonth.value = monthIdx
-  selectedDateStr.value = `${currentYear.value}-${String(monthIdx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   viewMode.value = 'month'
+  const dateStr = `${currentYear.value}-${String(monthIdx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  selectDayAndScroll(dateStr)
 }
 
 // Quick Jump dates
