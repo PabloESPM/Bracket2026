@@ -82,7 +82,15 @@ export const TEAM_TRANSLATIONS = {
   "Algeria": "Argelia", "Austria": "Austria", "Jordan": "Jordania",
   "Portugal": "Portugal", "DR Congo": "Congo RD", "Congo DR": "Congo RD", "Democratic Republic of the Congo": "Congo RD", "Uzbekistan": "Uzbekistán",
   "Colombia": "Colombia", "England": "Inglaterra", "Croatia": "Croacia",
-  "Ghana": "Ghana", "Panama": "Panamá"
+  "Ghana": "Ghana", "Panama": "Panamá",
+  "EE.UU.": "Estados Unidos",
+  "EEUU": "Estados Unidos",
+  "U.S.A.": "Estados Unidos",
+  "Arabia Saudita": "Arabia Saudí",
+  "República Checa": "Chequia",
+  "Czech Republic": "Chequia",
+  "Bosnia": "Bosnia-Herz.",
+  "Congo": "Congo RD"
 }
 
 export function calculateGroupStandings(matches, originalTeams) {

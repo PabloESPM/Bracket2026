@@ -25,7 +25,7 @@
       <div v-if="!isKnockout" class="flex items-center justify-between py-4 md:py-6 gap-2 md:gap-4">
         <!-- Home Team -->
         <div class="flex flex-col items-center flex-1 text-center min-w-0">
-          <img v-if="getFlagUrl(homeTeam)" class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(homeTeam, 64, 48)" @error="$event.target.style.display = 'none'" :alt="`Bandera de ${homeTeam}`" width="64" height="48" loading="lazy">
+          <img v-if="getFlagUrl(homeTeam)" :key="homeTeam" class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(homeTeam, 64, 48)" @error="$event.target.style.display = 'none'" @load="$event.target.style.display = ''" :alt="`Bandera de ${homeTeam}`" width="64" height="48" loading="lazy">
           <span class="font-bold text-xs md:text-sm text-slate-200 truncate w-full px-1">{{ homeTeam }}</span>
         </div>
 
@@ -54,7 +54,7 @@
 
         <!-- Away Team -->
         <div class="flex flex-col items-center flex-1 text-center min-w-0">
-          <img v-if="getFlagUrl(awayTeam)" class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(awayTeam, 64, 48)" @error="$event.target.style.display = 'none'" :alt="`Bandera de ${awayTeam}`" width="64" height="48" loading="lazy">
+          <img v-if="getFlagUrl(awayTeam)" :key="awayTeam" class="w-12 h-9 md:w-16 md:h-12 object-cover rounded-md md:rounded-lg shadow-md mb-2 border border-slate-800" :src="getFlagUrl(awayTeam, 64, 48)" @error="$event.target.style.display = 'none'" @load="$event.target.style.display = ''" :alt="`Bandera de ${awayTeam}`" width="64" height="48" loading="lazy">
           <span class="font-bold text-xs md:text-sm text-slate-200 truncate w-full px-1">{{ awayTeam }}</span>
         </div>
       </div>
@@ -73,7 +73,7 @@
               locked || !isTeamsReady ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
             ]"
           >
-            <img v-if="getFlagUrl(homeTeam)" class="w-12 h-8 object-cover rounded shadow-md mb-2 border border-slate-800" :src="getFlagUrl(homeTeam, 64, 48)" @error="$event.target.style.display = 'none'" alt="">
+            <img v-if="getFlagUrl(homeTeam)" :key="homeTeam" class="w-12 h-8 object-cover rounded shadow-md mb-2 border border-slate-800" :src="getFlagUrl(homeTeam, 64, 48)" @error="$event.target.style.display = 'none'" @load="$event.target.style.display = ''" alt="">
             <span class="font-bold text-xs truncate w-full text-center" :title="homeTeam">{{ homeTeam || 'Por definir' }}</span>
           </button>
 
@@ -89,7 +89,7 @@
               locked || !isTeamsReady ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
             ]"
           >
-            <img v-if="getFlagUrl(awayTeam)" class="w-12 h-8 object-cover rounded shadow-md mb-2 border border-slate-800" :src="getFlagUrl(awayTeam, 64, 48)" @error="$event.target.style.display = 'none'" alt="">
+            <img v-if="getFlagUrl(awayTeam)" :key="awayTeam" class="w-12 h-8 object-cover rounded shadow-md mb-2 border border-slate-800" :src="getFlagUrl(awayTeam, 64, 48)" @error="$event.target.style.display = 'none'" @load="$event.target.style.display = ''" alt="">
             <span class="font-bold text-xs truncate w-full text-center" :title="awayTeam">{{ awayTeam || 'Por definir' }}</span>
           </button>
         </div>

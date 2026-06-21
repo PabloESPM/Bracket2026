@@ -22,7 +22,7 @@
     >
       <div v-if="matchData.home" class="flex items-center gap-1.5 md:gap-2" :class="!readOnly ? 'cursor-grab active:cursor-grabbing' : ''" :draggable="!readOnly" @dragstart="onDragStart(matchData.home, $event)">
         <div class="flex items-center gap-1.5 md:gap-2" @click="setWinner(matchData.home)">
-          <img v-if="getFlagUrl(matchData.home)" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.home)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
+          <img v-if="getFlagUrl(matchData.home)" :key="matchData.home" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.home)" @error="$event.target.style.display = 'none'" @load="$event.target.style.display = ''" alt="" width="24" height="18" loading="lazy">
           <span
             class="font-bold text-[10px] md:text-[11px] truncate max-w-[90px] md:max-w-[110px]"
             :class="matchData.winner === matchData.home ? 'text-blue-400 font-extrabold' : 'text-slate-300'"
@@ -64,7 +64,7 @@
     >
       <div v-if="matchData.away" class="flex items-center gap-1.5 md:gap-2" :class="!readOnly ? 'cursor-grab active:cursor-grabbing' : ''" :draggable="!readOnly" @dragstart="onDragStart(matchData.away, $event)">
         <div class="flex items-center gap-1.5 md:gap-2" @click="setWinner(matchData.away)">
-          <img v-if="getFlagUrl(matchData.away)" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.away)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
+          <img v-if="getFlagUrl(matchData.away)" :key="matchData.away" class="w-4 h-2.5 md:w-4.5 md:h-3 object-cover rounded-sm border border-slate-800" :src="getFlagUrl(matchData.away)" @error="$event.target.style.display = 'none'" @load="$event.target.style.display = ''" alt="" width="24" height="18" loading="lazy">
           <span
             class="font-bold text-[10px] md:text-[11px] truncate max-w-[90px] md:max-w-[110px]"
             :class="matchData.winner === matchData.away ? 'text-blue-400 font-extrabold' : 'text-slate-300'"

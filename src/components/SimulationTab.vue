@@ -67,7 +67,7 @@
               class="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors text-[11px] md:text-xs"
             >
               <td class="p-3 font-semibold text-slate-100 flex items-center gap-2">
-                <img v-if="getFlagUrl(p.team)" class="w-4.5 h-3 object-cover rounded-sm shadow-sm border border-slate-800" :src="getFlagUrl(p.team)" @error="$event.target.style.display = 'none'" alt="" width="24" height="18" loading="lazy">
+                <img v-if="getFlagUrl(p.team)" :key="p.team" class="w-4.5 h-3 object-cover rounded-sm shadow-sm border border-slate-800" :src="getFlagUrl(p.team)" @error="$event.target.style.display = 'none'" @load="$event.target.style.display = ''" alt="" width="24" height="18" loading="lazy">
                 <span class="truncate max-w-[100px] md:max-w-none">{{ p.team }}</span>
               </td>
               <td class="p-3 text-center text-slate-400">100%</td>

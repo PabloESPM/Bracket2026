@@ -1,5 +1,16 @@
 import { TEAMS_INFO, CONF_CLASSES, TEAM_TRANSLATIONS } from './tournamentLogic.js'
 
+// Pre-build lowercase maps for case-insensitive lookup
+const lowercaseTranslations = {}
+Object.keys(TEAM_TRANSLATIONS).forEach(key => {
+  lowercaseTranslations[key.toLowerCase()] = TEAM_TRANSLATIONS[key]
+})
+
+const lowercaseTeamsInfo = {}
+Object.keys(TEAMS_INFO).forEach(key => {
+  lowercaseTeamsInfo[key.toLowerCase()] = TEAMS_INFO[key]
+})
+
 /**
  * Devuelve la URL de la bandera de un equipo desde flagcdn.com.
  * @param {string} team - Nombre del equipo en español o inglés
@@ -9,9 +20,9 @@ import { TEAMS_INFO, CONF_CLASSES, TEAM_TRANSLATIONS } from './tournamentLogic.j
  */
 export function getFlagUrl(team, width = 24, height = 18) {
   if (!team) return ''
-  const cleanedTeam = team.trim()
-  const translatedTeam = TEAM_TRANSLATIONS[cleanedTeam] || cleanedTeam
-  const info = TEAMS_INFO[translatedTeam]
+  const cleanedTeam = team.trim().toLowerCase()
+  const translatedTeam = lowercaseTranslations[cleanedTeam] || team.trim()
+  const info = lowercaseTeamsInfo[translatedTeam.toLowerCase()]
   if (!info) return ''
   return `https://flagcdn.com/${width}x${height}/${info.flag}.png`
 }
@@ -23,9 +34,9 @@ export function getFlagUrl(team, width = 24, height = 18) {
  */
 export function getConfClass(team) {
   if (!team) return ''
-  const cleanedTeam = team.trim()
-  const translatedTeam = TEAM_TRANSLATIONS[cleanedTeam] || cleanedTeam
-  const info = TEAMS_INFO[translatedTeam]
+  const cleanedTeam = team.trim().toLowerCase()
+  const translatedTeam = lowercaseTranslations[cleanedTeam] || team.trim()
+  const info = lowercaseTeamsInfo[translatedTeam.toLowerCase()]
   if (!info) return ''
   return CONF_CLASSES[info.conf] || ''
 }

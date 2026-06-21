@@ -87,7 +87,7 @@
               <!-- Home -->
               <div class="flex items-center gap-2 w-32 md:w-40 justify-end text-right min-w-0">
                 <span class="text-xs font-bold text-slate-200 truncate">{{ match.home_team }}</span>
-                <img v-if="getFlagUrl(match.home_team)" class="w-6 h-4 object-cover rounded shadow" :src="getFlagUrl(match.home_team, 32, 24)" alt="" width="32" height="24" loading="lazy">
+                <img v-if="getFlagUrl(match.home_team)" :key="match.home_team" class="w-6 h-4 object-cover rounded shadow" :src="getFlagUrl(match.home_team, 32, 24)" alt="" width="32" height="24" loading="lazy">
               </div>
 
               <!-- Inputs -->
@@ -111,7 +111,7 @@
 
               <!-- Away -->
               <div class="flex items-center gap-2 w-32 md:w-40 justify-start text-left min-w-0">
-                <img v-if="getFlagUrl(match.away_team)" class="w-6 h-4 object-cover rounded shadow" :src="getFlagUrl(match.away_team, 32, 24)" alt="" width="32" height="24" loading="lazy">
+                <img v-if="getFlagUrl(match.away_team)" :key="match.away_team" class="w-6 h-4 object-cover rounded shadow" :src="getFlagUrl(match.away_team, 32, 24)" alt="" width="32" height="24" loading="lazy">
                 <span class="text-xs font-bold text-slate-200 truncate">{{ match.away_team }}</span>
               </div>
             </div>

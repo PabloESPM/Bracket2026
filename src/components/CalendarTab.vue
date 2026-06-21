@@ -418,14 +418,20 @@
           <div class="flex items-center justify-between py-2 gap-4">
             <!-- Home Team info -->
             <div class="flex items-center gap-3 w-[40%] justify-end text-right min-w-0">
-              <span class="font-extrabold text-xs md:text-sm text-slate-200 truncate" :title="match.home">
+              <span 
+                class="font-extrabold text-xs md:text-sm text-slate-200 truncate" 
+                :class="{ 'hidden md:inline': isRealTeam(match.home) }"
+                :title="match.home"
+              >
                 {{ match.home || 'Por definir' }}
               </span>
               <img
                 v-if="getFlagUrl(match.home)"
+                :key="match.home"
                 class="w-6 h-4 md:w-8 md:h-5 object-cover rounded shadow-sm border border-slate-800 shrink-0"
                 :src="getFlagUrl(match.home, 32, 24)"
                 @error="$event.target.style.display = 'none'"
+                @load="$event.target.style.display = ''"
                 alt=""
                 width="32"
                 height="24"
@@ -470,15 +476,21 @@
             <div class="flex items-center gap-3 w-[40%] justify-start text-left min-w-0">
               <img
                 v-if="getFlagUrl(match.away)"
+                :key="match.away"
                 class="w-6 h-4 md:w-8 md:h-5 object-cover rounded shadow-sm border border-slate-800 shrink-0"
                 :src="getFlagUrl(match.away, 32, 24)"
                 @error="$event.target.style.display = 'none'"
+                @load="$event.target.style.display = ''"
                 alt=""
                 width="32"
                 height="24"
                 loading="lazy"
               >
-              <span class="font-extrabold text-xs md:text-sm text-slate-200 truncate" :title="match.away">
+              <span 
+                class="font-extrabold text-xs md:text-sm text-slate-200 truncate" 
+                :class="{ 'hidden md:inline': isRealTeam(match.away) }"
+                :title="match.away"
+              >
                 {{ match.away || 'Por definir' }}
               </span>
             </div>
@@ -1035,6 +1047,13 @@ function formatDateLong(dateStr) {
 function editMatch(match) {
   if (props.readOnly) return
   emit('edit-match', match)
+}
+
+function isRealTeam(teamName) {
+  if (!teamName) return false
+  const cleaned = teamName.trim()
+  const translated = TEAM_TRANSLATIONS[cleaned] || cleaned
+  return !!TEAMS_INFO[translated]
 }
 
 // Auto scroll/jump to first match month on mount
