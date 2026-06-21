@@ -304,7 +304,7 @@ const computedBracket = computed(() => {
     const p = predMap[id]
     const locked = new Date().getTime() >= new Date(match.start_time).getTime() - 10 * 60 * 1000 || match.status !== 'scheduled'
 
-    if (match.status === 'finished') {
+    if (match.status === 'finished' || match.status === 'live') {
       b.r32[id] = {
         home: match.home_team,
         away: match.away_team,
@@ -341,7 +341,7 @@ const computedBracket = computed(() => {
     const p = predMap[id]
     const locked = new Date().getTime() >= new Date(match.start_time).getTime() - 10 * 60 * 1000 || match.status !== 'scheduled'
 
-    if (match.status === 'finished') {
+    if (match.status === 'finished' || match.status === 'live') {
       b[stage][id] = {
         home: match.home_team,
         away: match.away_team,
@@ -382,7 +382,7 @@ const computedBracket = computed(() => {
     const p = predMap['final']
     const locked = new Date().getTime() >= new Date(finalMatch.start_time).getTime() - 10 * 60 * 1000 || finalMatch.status !== 'scheduled'
 
-    if (finalMatch.status === 'finished') {
+    if (finalMatch.status === 'finished' || finalMatch.status === 'live') {
       b.final = { home: finalMatch.home_team, away: finalMatch.away_team, winner: finalMatch.winner, locked: true }
     } else {
       b.final = {
@@ -401,7 +401,7 @@ const computedBracket = computed(() => {
     const p = predMap['third']
     const locked = new Date().getTime() >= new Date(thirdMatch.start_time).getTime() - 10 * 60 * 1000 || thirdMatch.status !== 'scheduled'
 
-    if (thirdMatch.status === 'finished') {
+    if (thirdMatch.status === 'finished' || thirdMatch.status === 'live') {
       b.third = { home: thirdMatch.home_team, away: thirdMatch.away_team, winner: thirdMatch.winner, locked: true }
     } else {
       b.third = {

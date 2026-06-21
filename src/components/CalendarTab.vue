@@ -210,10 +210,10 @@
 
             <!-- Indicators of Matches in cell -->
             <div class="w-full flex flex-col items-center justify-end mt-auto min-h-[36px]">
-              <!-- Tags with flag emojis of matchups -->
+              <!-- Tags with flag emojis of matchups (Desktop only) -->
               <div 
                 v-if="filteredMatchesByDate[cell.dateString]?.length > 0" 
-                class="flex flex-wrap gap-1 justify-center max-h-[44px] overflow-y-auto w-full pb-0.5 scrollbar-none"
+                class="hidden md:flex flex-wrap gap-1 justify-center max-h-[44px] overflow-y-auto w-full pb-0.5 scrollbar-none"
               >
                 <span 
                   v-for="m in filteredMatchesByDate[cell.dateString]" 
@@ -225,6 +225,23 @@
                   <span class="text-xs md:text-sm leading-none flex items-center">{{ getTeamFlagEmoji(m.home) }}</span>
                   <span class="text-[8px] md:text-[9px] text-slate-500 font-bold leading-none align-middle px-0.5">vs</span>
                   <span class="text-xs md:text-sm leading-none flex items-center">{{ getTeamFlagEmoji(m.away) }}</span>
+                </span>
+              </div>
+
+              <!-- Match Count Badge (Mobile only) -->
+              <div
+                v-if="filteredMatchesByDate[cell.dateString]?.length > 0"
+                class="md:hidden flex items-center justify-center w-full pb-1"
+              >
+                <span
+                  class="inline-flex items-center justify-center font-extrabold text-[9px] w-5 h-5 rounded-full shadow-sm transition-all duration-200"
+                  :class="[
+                    selectedDateStr === cell.dateString
+                      ? 'bg-blue-600 text-white shadow-blue-500/20'
+                      : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                  ]"
+                >
+                  {{ filteredMatchesByDate[cell.dateString].length }}
                 </span>
               </div>
               
@@ -308,7 +325,7 @@
     <!-- Selected Day Matches Detail Section -->
     <div 
       id="selected-day-detail-section"
-      class="bg-slate-900 border rounded-2xl shadow-xl overflow-hidden p-4 md:p-6 space-y-4 transition-all duration-500"
+      class="bg-slate-900 border rounded-2xl shadow-xl overflow-hidden p-4 md:p-6 space-y-4 transition-all duration-500 scroll-mt-24 md:scroll-mt-20"
       :class="[
         activeHighlightSection 
           ? 'ring-2 md:ring-4 ring-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.5)] border-indigo-400 bg-indigo-950/5' 
@@ -429,7 +446,7 @@
                 ]"
               >
                 <!-- Score or 'vs' -->
-                <span v-if="match.played && match.scoreHome !== null && match.scoreAway !== null">
+                <span v-if="(match.played || match.isLive || match.isFinished) && match.scoreHome !== null && match.scoreAway !== null">
                   {{ match.scoreHome }} - {{ match.scoreAway }}
                 </span>
                 <span v-else-if="match.stage !== 'group' && match.winner">
