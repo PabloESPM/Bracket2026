@@ -15,7 +15,7 @@
         <!-- Toolbar: Mode selectors and predictions toggle -->
         <div class="flex flex-wrap items-center gap-2.5">
           <!-- Prediction Mode Toggle -->
-          <div class="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 shrink-0">
+          <div v-if="isLoggedIn" class="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 shrink-0">
             <button
               @click="dataSource = 'bracket'"
               class="px-3 py-1.5 text-xs font-bold rounded-lg transition duration-200 cursor-pointer"
@@ -185,7 +185,7 @@
             v-for="(cell, cellIdx) in calendarDays"
             :key="cellIdx"
             @click="selectDayAndScroll(cell.dateString)"
-            class="aspect-square p-1 md:p-2 border rounded-xl flex flex-col justify-between relative transition duration-150 cursor-pointer group select-none min-h-[55px] md:min-h-[75px]"
+            class="aspect-square p-1 md:p-2 border rounded-xl flex flex-col justify-between relative transition duration-150 cursor-pointer group select-none min-h-[55px] md:min-h-[75px] calendar-cell"
             :class="[
               cell.isCurrentMonth
                 ? 'bg-slate-950/20 border-slate-800/50 hover:bg-slate-800/40 hover:border-slate-700'
@@ -198,7 +198,7 @@
           >
             <!-- Day Number -->
             <span
-              class="text-xs md:text-sm font-bold block text-left"
+              class="text-xs md:text-sm font-bold block text-left calendar-cell-number"
               :class="[
                 selectedDateStr === cell.dateString ? 'text-blue-400' : 'text-slate-300',
                 !cell.isCurrentMonth ? '!text-slate-600' : '',
@@ -209,7 +209,7 @@
             </span>
 
             <!-- Indicators of Matches in cell -->
-            <div class="w-full flex flex-col items-center justify-end mt-auto min-h-[36px]">
+            <div class="w-full flex flex-col items-center justify-end mt-auto min-h-[36px] calendar-cell-indicators">
               <!-- Tags with flag emojis of matchups (Desktop only) -->
               <div 
                 v-if="filteredMatchesByDate[cell.dateString]?.length > 0" 
@@ -539,6 +539,10 @@ const props = defineProps({
   readOnly: {
     type: Boolean,
     default: false
+  },
+  isLoggedIn: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -564,6 +568,13 @@ const viewMode = ref('month') // 'month' or 'year'
 const dataSource = ref('bracket') // 'bracket' (predictions) or 'official' (official)
 const stageFilter = ref('all')
 const searchQuery = ref('')
+
+// Auto-set data source to official if not logged in
+watch(() => props.isLoggedIn, (newVal) => {
+  if (!newVal) {
+    dataSource.value = 'official'
+  }
+}, { immediate: true })
 
 // Calendar Constants
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -951,13 +962,26 @@ function jumpToDate(year, month, dateStr) {
 // Go to current system day
 function goToToday() {
   const today = new Date()
-  currentYear.value = today.getFullYear()
-  currentMonth.value = today.getMonth()
-  const y = today.getFullYear()
-  const m = String(today.getMonth() + 1).padStart(2, '0')
-  const d = String(today.getDate()).padStart(2, '0')
-  selectedDateStr.value = `${y}-${m}-${d}`
+  let targetDate = today
+  
+  const startTournament = new Date('2026-06-11T00:00:00')
+  const endTournament = new Date('2026-07-19T23:59:59')
+  
+  if (today < startTournament) {
+    targetDate = startTournament
+  } else if (today > endTournament) {
+    targetDate = endTournament
+  }
+  
+  const y = targetDate.getFullYear()
+  const m = targetDate.getMonth()
+  
+  currentYear.value = y
+  currentMonth.value = m
   viewMode.value = 'month'
+  
+  const dStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`
+  selectDayAndScroll(dStr)
 }
 
 // Month navigation increment/decrement
@@ -1033,5 +1057,25 @@ input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+@media (max-width: 480px) {
+  .calendar-cell {
+    min-height: 38px !important;
+    aspect-ratio: 1 / 1 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 2px !important;
+  }
+  .calendar-cell-number {
+    text-align: center !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: auto !important;
+    width: auto !important;
+  }
+  .calendar-cell-indicators {
+    display: none !important;
+  }
 }
 </style>

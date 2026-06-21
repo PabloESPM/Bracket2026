@@ -69,6 +69,7 @@
             :computedGroups="computedGroups"
             :computedBracket="computedBracket"
             :readOnly="chismosoMode || !user"
+            :isLoggedIn="!!user"
             @edit-match="openCalendarMatchEdit"
           />
 
