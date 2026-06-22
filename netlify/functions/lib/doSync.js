@@ -48,18 +48,36 @@ export async function doSync() {
 
   let updatedCount = 0
 
+  // Pre-build lowercase translations map for case-insensitive lookup
+  const lowercaseTranslations = {}
+  Object.keys(TEAM_TRANSLATIONS).forEach(key => {
+    lowercaseTranslations[key.toLowerCase()] = TEAM_TRANSLATIONS[key]
+  })
+
   // 3. Comparar y actualizar
   for (const match of localMatches) {
     const apiMatch = apiMatches.find(am => {
-      const apiHome = TEAM_TRANSLATIONS[am.homeTeam?.name] || am.homeTeam?.name
-      const apiAway = TEAM_TRANSLATIONS[am.awayTeam?.name] || am.awayTeam?.name
-      return am.id?.toString() === match.api_match_id || (apiHome === match.home_team && apiAway === match.away_team)
+      const homeName = am.homeTeam?.name || ''
+      const awayName = am.awayTeam?.name || ''
+      
+      const apiHome = lowercaseTranslations[homeName.toLowerCase().trim()] || homeName.trim()
+      const apiAway = lowercaseTranslations[awayName.toLowerCase().trim()] || awayName.trim()
+      
+      const dbHome = match.home_team || ''
+      const dbAway = match.away_team || ''
+      
+      return am.id?.toString() === match.api_match_id || 
+             (apiHome.toLowerCase().trim() === dbHome.toLowerCase().trim() && 
+              apiAway.toLowerCase().trim() === dbAway.toLowerCase().trim())
     })
 
     if (!apiMatch) continue
 
     const isFinished = apiMatch.status === 'FINISHED'
-    const isLive     = apiMatch.status === 'IN_PLAY' || apiMatch.status === 'PAUSED'
+    const isLive     = apiMatch.status === 'IN_PLAY' || 
+                       apiMatch.status === 'PAUSED' || 
+                       apiMatch.status === 'EXTRA_TIME' || 
+                       apiMatch.status === 'PENALTY_SHOOTOUT'
 
     let newStatus = 'scheduled'
     if (isFinished) newStatus = 'finished'

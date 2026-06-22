@@ -117,11 +117,11 @@
                     : m.played
                       ? 'bg-slate-900/80 border-slate-800/50 text-indigo-400 font-extrabold'
                       : 'bg-slate-900/80 border-slate-800/50 text-slate-500 font-semibold',
-                  isLocked(m) && !m.played && !m.isLive ? 'border-amber-900/50' : ''
+                  showLockIcon(m) ? 'border-amber-900/50' : ''
                 ]"
               >
                 <span v-if="m.isLive" class="mr-0.5 text-[7px] align-middle">🔴</span>
-                <span v-else-if="isLocked(m) && !m.played" class="mr-0.5 text-[8px]" title="Pronóstico cerrado">🔒</span>
+                <span v-else-if="showLockIcon(m)" class="mr-0.5 text-[8px]" title="Pronóstico cerrado">🔒</span>
                 <span v-if="m.isLive && !m.played">En curso</span>
                 <span v-else>{{ m.played ? `${m.scoreHome} - ${m.scoreAway}` : 'vs' }}</span>
               </span>
@@ -200,5 +200,13 @@ function isLocked(match) {
   if (match.locked !== undefined) return match.locked
   if (!match.start_time) return false
   return new Date().getTime() >= new Date(match.start_time).getTime() - 10 * 60 * 1000
+}
+
+function showLockIcon(match) {
+  if (match.isLive || match.isFinished || match.played) return false
+  if (!match.start_time) return false
+  const now = new Date().getTime()
+  const start = new Date(match.start_time).getTime()
+  return now >= start - 10 * 60 * 1000 && now < start
 }
 </script>
