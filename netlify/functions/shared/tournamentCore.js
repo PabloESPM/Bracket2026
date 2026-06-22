@@ -77,6 +77,7 @@ export const TEAM_TRANSLATIONS = {
   "Netherlands": "Países Bajos", "Japan": "Japón", "Sweden": "Suecia",
   "Tunisia": "Túnez", "Belgium": "Bélgica", "Egypt": "Egipto", "Iran": "Irán",
   "New Zealand": "Nueva Zelanda", "Spain": "España", "Cape Verde": "Cabo Verde",
+  "Cape Verde Islands": "Cabo Verde",
   "Saudi Arabia": "Arabia Saudí", "Uruguay": "Uruguay", "France": "Francia",
   "Senegal": "Senegal", "Iraq": "Irak", "Norway": "Noruega", "Argentina": "Argentina",
   "Algeria": "Argelia", "Austria": "Austria", "Jordan": "Jordania",
