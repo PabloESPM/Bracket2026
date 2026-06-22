@@ -42,6 +42,12 @@ export async function doSync() {
   const apiMatches = data.matches || []
   console.log(`[doSync] Recibidos ${apiMatches.length} partidos de football-data.org.`)
 
+  // Log de diagnóstico: mostrar los primeros nombres de equipos que devuelve la API
+  if (apiMatches.length > 0) {
+    const sampleNames = apiMatches.slice(0, 8).map(am => `${am.homeTeam?.name} vs ${am.awayTeam?.name}`)
+    console.log(`[doSync] Muestra de nombres API:`, sampleNames)
+  }
+
   // 2. Leer partidos de Supabase
   const { data: localMatches, error: fetchErr } = await supabase.from('matches').select('*')
   if (fetchErr) throw fetchErr
@@ -57,21 +63,34 @@ export async function doSync() {
   // 3. Comparar y actualizar
   for (const match of localMatches) {
     const apiMatch = apiMatches.find(am => {
+      // Coincidencia directa por ID de la API (si ya fue mapeado previamente)
+      if (am.id?.toString() === match.api_match_id) return true
+
       const homeName = am.homeTeam?.name || ''
       const awayName = am.awayTeam?.name || ''
       
-      const apiHome = lowercaseTranslations[homeName.toLowerCase().trim()] || homeName.trim()
-      const apiAway = lowercaseTranslations[awayName.toLowerCase().trim()] || awayName.trim()
+      const apiHome = (lowercaseTranslations[homeName.toLowerCase().trim()] || homeName.trim()).toLowerCase().trim()
+      const apiAway = (lowercaseTranslations[awayName.toLowerCase().trim()] || awayName.trim()).toLowerCase().trim()
       
-      const dbHome = match.home_team || ''
-      const dbAway = match.away_team || ''
+      const dbHome = (match.home_team || '').toLowerCase().trim()
+      const dbAway = (match.away_team || '').toLowerCase().trim()
       
-      return am.id?.toString() === match.api_match_id || 
-             (apiHome.toLowerCase().trim() === dbHome.toLowerCase().trim() && 
-              apiAway.toLowerCase().trim() === dbAway.toLowerCase().trim())
+      // Coincidencia directa: home=home, away=away
+      if (apiHome === dbHome && apiAway === dbAway) return true
+      
+      // Coincidencia cruzada: la API puede invertir el orden local/visitante
+      if (apiHome === dbAway && apiAway === dbHome) return true
+      
+      return false
     })
 
-    if (!apiMatch) continue
+    if (!apiMatch) {
+      // Log de diagnóstico para partidos de fase de grupos sin coincidencia
+      if (match.stage === 'group') {
+        console.warn(`[doSync] ⚠️ Partido ${match.id} (${match.home_team} vs ${match.away_team}) no encontró coincidencia en la API`)
+      }
+      continue
+    }
 
     const isFinished = apiMatch.status === 'FINISHED'
     const isLive     = apiMatch.status === 'IN_PLAY' || 
@@ -83,10 +102,23 @@ export async function doSync() {
     if (isFinished) newStatus = 'finished'
     else if (isLive) newStatus = 'live'
 
-    const hScore = apiMatch.score?.fullTime?.home
-    const aScore = apiMatch.score?.fullTime?.away
-    // El plan gratuito devuelve null en fullTime durante IN_PLAY. Solo actualizamos
-    // scores cuando el partido está FINISHED con valores reales.
+    // Intentar obtener scores de múltiples fuentes del API
+    // (el plan gratuito a veces solo tiene halfTime o regularTime)
+    let hScore = apiMatch.score?.fullTime?.home
+    let aScore = apiMatch.score?.fullTime?.away
+
+    // Fallback a regularTime si fullTime no tiene datos
+    if ((hScore === null || hScore === undefined) && apiMatch.score?.regularTime) {
+      hScore = apiMatch.score.regularTime.home
+      aScore = apiMatch.score.regularTime.away
+    }
+
+    // Fallback a halfTime si tampoco hay regularTime
+    if ((hScore === null || hScore === undefined) && apiMatch.score?.halfTime) {
+      hScore = apiMatch.score.halfTime.home
+      aScore = apiMatch.score.halfTime.away
+    }
+
     const hasValidScores = hScore !== null && hScore !== undefined && aScore !== null && aScore !== undefined
 
     // 3.1. Caso particular de partidos en vivo en plan gratuito sin scores
