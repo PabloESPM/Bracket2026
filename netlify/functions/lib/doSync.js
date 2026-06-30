@@ -341,14 +341,13 @@ export async function doSync() {
     console.log(`[doSync] Partido ${match.id} actualizado (scores, status, time, teams o id)`)
   }
 
-  // 4. Propagar bracket si hubo cambios
-  if (updatedCount > 0) {
-    const propagated = propagateOfficialMatches(localMatches)
-    for (const m of propagated) {
-      const orig = localMatches.find(o => o.id === m.id)
-      if (orig && (orig.home_team !== m.home_team || orig.away_team !== m.away_team)) {
-        await supabase.from('matches').update({ home_team: m.home_team, away_team: m.away_team }).eq('id', m.id)
-      }
+  // 4. Propagar bracket siempre para asegurar la coherencia de los cruces oficiales en Supabase
+  const propagated = propagateOfficialMatches(localMatches)
+  for (const m of propagated) {
+    const orig = localMatches.find(o => o.id === m.id)
+    if (orig && (orig.home_team !== m.home_team || orig.away_team !== m.away_team)) {
+      await supabase.from('matches').update({ home_team: m.home_team, away_team: m.away_team }).eq('id', m.id)
+      console.log(`[doSync] Propagación: actualizado partido ${m.id} -> ${m.home_team} vs ${m.away_team}`)
     }
   }
 
