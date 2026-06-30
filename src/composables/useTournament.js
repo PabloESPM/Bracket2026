@@ -34,7 +34,7 @@ export function useTournament(
       // 2. Fetch Matches (ALWAYS)
       const { data: mat, error: matErr } = await supabase
         .from('matches')
-        .select('id, home_team, away_team, home_score, away_score, winner, status, start_time, stage')
+        .select('id, home_team, away_team, home_score, away_score, winner, status, start_time, stage, duration, home_penalties, away_penalties')
         .order('start_time', { ascending: true })
 
       if (matErr) throw matErr

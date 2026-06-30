@@ -152,6 +152,13 @@ CREATE OR REPLACE TRIGGER on_match_finished
     FOR EACH ROW
     EXECUTE FUNCTION public.calculate_prediction_points();
 
+-- 6b. MIGRACIÓN: Añadir columnas de detalles de partido de eliminatoria (ejecutar si la tabla ya existe)
+-- Descomentar y ejecutar en el SQL Editor de Supabase si ya tienes la tabla creada:
+-- ALTER TABLE public.matches
+--   ADD COLUMN IF NOT EXISTS duration TEXT DEFAULT 'REGULAR',
+--   ADD COLUMN IF NOT EXISTS home_penalties INTEGER NULL,
+--   ADD COLUMN IF NOT EXISTS away_penalties INTEGER NULL;
+
 -- 6. Vista del Leaderboard (Clasificación General de Amigos)
 CREATE OR REPLACE VIEW public.leaderboard AS
 SELECT 

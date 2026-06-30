@@ -300,19 +300,32 @@ export function propagateOfficialMatches(allMatches) {
   })
 
   const r32Mapping = getR32Mapping(groups)
-  
+
   Object.keys(r32Mapping).forEach(id => {
     if (matchMap[id]) {
-      const map = r32Mapping[id]
-      if (map.home) matchMap[id].home_team = map.home
-      if (map.away) matchMap[id].away_team = map.away
+      const currentStatus = matchMap[id].status
+      // KEY FIX: Only overwrite team names for scheduled matches.
+      // For finished/live matches, the API has already given us the real teams.
+      if (currentStatus !== 'finished' && currentStatus !== 'live') {
+        const map = r32Mapping[id]
+        if (map.home) matchMap[id].home_team = map.home
+        if (map.away) matchMap[id].away_team = map.away
+      }
     }
   })
 
   const getWinner = (mId) => {
     const m = matchMap[mId]
     if (!m || m.status !== 'finished') return null
-    return m.winner
+    // If winner field is stored, use it
+    if (m.winner) return m.winner
+    // Fallback: derive winner from scores if available (for cases where winner column is null)
+    if (m.home_score !== null && m.home_score !== undefined &&
+        m.away_score !== null && m.away_score !== undefined) {
+      if (m.home_score > m.away_score) return m.home_team
+      if (m.away_score > m.home_score) return m.away_team
+    }
+    return null
   }
 
   const getLoser = (mId) => {

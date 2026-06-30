@@ -309,13 +309,25 @@ const computedBracket = computed(() => {
       b.r32[id] = {
         home: match.home_team,
         away: match.away_team,
+        scoreHome: match.home_score ?? null,
+        scoreAway: match.away_score ?? null,
+        duration: match.duration || 'REGULAR',
+        homePenalties: match.home_penalties ?? null,
+        awayPenalties: match.away_penalties ?? null,
         winner: match.winner,
+        isLive: match.status === 'live',
         locked: true
       }
     } else {
       b.r32[id] = {
         home: mapping.home,
         away: mapping.away,
+        scoreHome: null,
+        scoreAway: null,
+        duration: 'REGULAR',
+        homePenalties: null,
+        awayPenalties: null,
+        isLive: false,
         winner: (p && (p.predicted_winner === mapping.home || p.predicted_winner === mapping.away)) ? p.predicted_winner : null,
         locked: locked
       }
@@ -346,13 +358,25 @@ const computedBracket = computed(() => {
       b[stage][id] = {
         home: match.home_team,
         away: match.away_team,
+        scoreHome: match.home_score ?? null,
+        scoreAway: match.away_score ?? null,
+        duration: match.duration || 'REGULAR',
+        homePenalties: match.home_penalties ?? null,
+        awayPenalties: match.away_penalties ?? null,
         winner: match.winner,
+        isLive: match.status === 'live',
         locked: true
       }
     } else {
       b[stage][id] = {
         home: homeVal,
         away: awayVal,
+        scoreHome: null,
+        scoreAway: null,
+        duration: 'REGULAR',
+        homePenalties: null,
+        awayPenalties: null,
+        isLive: false,
         winner: (p && (p.predicted_winner === homeVal || p.predicted_winner === awayVal)) ? p.predicted_winner : null,
         locked: locked
       }
@@ -384,11 +408,28 @@ const computedBracket = computed(() => {
     const locked = new Date().getTime() >= new Date(finalMatch.start_time).getTime() - 10 * 60 * 1000 || finalMatch.status !== 'scheduled'
 
     if (finalMatch.status === 'finished' || finalMatch.status === 'live') {
-      b.final = { home: finalMatch.home_team, away: finalMatch.away_team, winner: finalMatch.winner, locked: true }
+      b.final = {
+        home: finalMatch.home_team,
+        away: finalMatch.away_team,
+        scoreHome: finalMatch.home_score ?? null,
+        scoreAway: finalMatch.away_score ?? null,
+        duration: finalMatch.duration || 'REGULAR',
+        homePenalties: finalMatch.home_penalties ?? null,
+        awayPenalties: finalMatch.away_penalties ?? null,
+        winner: finalMatch.winner,
+        isLive: finalMatch.status === 'live',
+        locked: true
+      }
     } else {
       b.final = {
         home: fHome,
         away: fAway,
+        scoreHome: null,
+        scoreAway: null,
+        duration: 'REGULAR',
+        homePenalties: null,
+        awayPenalties: null,
+        isLive: false,
         winner: (p && (p.predicted_winner === fHome || p.predicted_winner === fAway)) ? p.predicted_winner : null,
         locked: locked
       }
@@ -403,11 +444,28 @@ const computedBracket = computed(() => {
     const locked = new Date().getTime() >= new Date(thirdMatch.start_time).getTime() - 10 * 60 * 1000 || thirdMatch.status !== 'scheduled'
 
     if (thirdMatch.status === 'finished' || thirdMatch.status === 'live') {
-      b.third = { home: thirdMatch.home_team, away: thirdMatch.away_team, winner: thirdMatch.winner, locked: true }
+      b.third = {
+        home: thirdMatch.home_team,
+        away: thirdMatch.away_team,
+        scoreHome: thirdMatch.home_score ?? null,
+        scoreAway: thirdMatch.away_score ?? null,
+        duration: thirdMatch.duration || 'REGULAR',
+        homePenalties: thirdMatch.home_penalties ?? null,
+        awayPenalties: thirdMatch.away_penalties ?? null,
+        winner: thirdMatch.winner,
+        isLive: thirdMatch.status === 'live',
+        locked: true
+      }
     } else {
       b.third = {
         home: tHome,
         away: tAway,
+        scoreHome: null,
+        scoreAway: null,
+        duration: 'REGULAR',
+        homePenalties: null,
+        awayPenalties: null,
+        isLive: false,
         winner: (p && (p.predicted_winner === tHome || p.predicted_winner === tAway)) ? p.predicted_winner : null,
         locked: locked
       }

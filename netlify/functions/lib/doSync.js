@@ -11,6 +11,19 @@ const COMPETITION = 'WC'
 
 import { TEAM_TRANSLATIONS, propagateOfficialMatches } from '../shared/tournamentCore.js'
 
+function mapApiStageToDb(apiStage) {
+  if (!apiStage) return ''
+  const s = apiStage.toUpperCase()
+  if (s === 'GROUP_STAGE') return 'group'
+  if (s === 'LAST_32' || s === 'ROUND_OF_32') return 'r32'
+  if (s === 'LAST_16' || s === 'ROUND_OF_16') return 'r16'
+  if (s === 'QUARTER_FINALS') return 'qf'
+  if (s === 'SEMI_FINALS') return 'sf'
+  if (s === 'THIRD_PLACE' || s === 'THIRD') return 'third'
+  if (s === 'FINAL') return 'final'
+  return ''
+}
+
 export async function doSync() {
   const t0 = Date.now()
   const url  = process.env.VITE_SUPABASE_URL
@@ -62,32 +75,77 @@ export async function doSync() {
 
   // 3. Comparar y actualizar
   for (const match of localMatches) {
-    const apiMatch = apiMatches.find(am => {
-      // Coincidencia directa por ID de la API (si ya fue mapeado previamente)
-      if (am.id?.toString() === match.api_match_id) return true
+    const apiMatch = (() => {
+      // 3.1 Coincidencia directa por ID de la API
+      const directMatch = apiMatches.find(am => am.id?.toString() === match.api_match_id)
+      if (directMatch) return directMatch
 
-      const homeName = am.homeTeam?.name || ''
-      const awayName = am.awayTeam?.name || ''
-      
-      const apiHome = (lowercaseTranslations[homeName.toLowerCase().trim()] || homeName.trim()).toLowerCase().trim()
-      const apiAway = (lowercaseTranslations[awayName.toLowerCase().trim()] || awayName.trim()).toLowerCase().trim()
-      
-      const dbHome = (match.home_team || '').toLowerCase().trim()
-      const dbAway = (match.away_team || '').toLowerCase().trim()
-      
-      // Coincidencia directa: home=home, away=away
-      if (apiHome === dbHome && apiAway === dbAway) return true
-      
-      // Coincidencia cruzada: la API puede invertir el orden local/visitante
-      if (apiHome === dbAway && apiAway === dbHome) return true
-      
-      return false
-    })
+      // 3.2 Buscar coincidencia por puntuación/heurística
+      let bestMatch = null
+      let maxScore = -1
+      const dbStage = match.stage // 'group', 'r32', 'r16', etc.
+
+      for (const am of apiMatches) {
+        const apiStage = mapApiStageToDb(am.stage)
+        // La fase debe coincidir siempre
+        if (apiStage !== dbStage) continue
+
+        let score = 0
+
+        // Comparar nombres de equipos
+        const homeName = am.homeTeam?.name || ''
+        const awayName = am.awayTeam?.name || ''
+
+        const apiHome = (lowercaseTranslations[homeName.toLowerCase().trim()] || homeName.trim()).toLowerCase().trim()
+        const apiAway = (lowercaseTranslations[awayName.toLowerCase().trim()] || awayName.trim()).toLowerCase().trim()
+
+        const dbHome = (match.home_team || '').toLowerCase().trim()
+        const dbAway = (match.away_team || '').toLowerCase().trim()
+
+        const homeMatched = (apiHome === dbHome || apiHome === dbAway)
+        const awayMatched = (apiAway === dbHome || apiAway === dbAway)
+
+        if (homeMatched && awayMatched) {
+          score += 50
+        } else if (homeMatched || awayMatched) {
+          // Coincidencia parcial: un equipo coincide. Útil si el otro en la BD es un tercero incorrecto.
+          score += 30
+        }
+
+        // Comparar fecha y hora de inicio
+        if (am.utcDate && match.start_time) {
+          const apiTime = new Date(am.utcDate).getTime()
+          const dbTime = new Date(match.start_time).getTime()
+          if (!isNaN(apiTime) && !isNaN(dbTime)) {
+            const diffMin = Math.abs(apiTime - dbTime) / (1000 * 60)
+            if (diffMin <= 15) {
+              score += 20
+            } else if (diffMin <= 120) {
+              score += 10
+            }
+          }
+        }
+
+        // Para fase de grupos, requerimos que coincida al menos un equipo para evitar falsos positivos
+        if (dbStage === 'group' && !homeMatched && !awayMatched) {
+          continue
+        }
+
+        if (score > maxScore) {
+          maxScore = score
+          bestMatch = am
+        }
+      }
+
+      // Solo consideramos válido si la puntuación supera un umbral mínimo
+      // (20 para coincidir por hora exacta de inicio, o 30 por nombre de equipo)
+      return maxScore >= 15 ? bestMatch : null
+    })()
 
     if (!apiMatch) {
-      // Log de diagnóstico para partidos de fase de grupos sin coincidencia
-      if (match.stage === 'group') {
-        console.warn(`[doSync] ⚠️ Partido ${match.id} (${match.home_team} vs ${match.away_team}) no encontró coincidencia en la API`)
+      // Log de diagnóstico para partidos sin coincidencia
+      if (match.stage === 'group' || match.status === 'finished' || match.status === 'live') {
+        console.warn(`[doSync] ⚠️ Partido DB ${match.id} (${match.home_team} vs ${match.away_team}, stage: ${match.stage}) no encontró coincidencia en la API`)
       }
       continue
     }
@@ -101,6 +159,13 @@ export async function doSync() {
     let newStatus = 'scheduled'
     if (isFinished) newStatus = 'finished'
     else if (isLive) newStatus = 'live'
+
+    // Capturar duración del partido: REGULAR, EXTRA_TIME, PENALTY_SHOOTOUT
+    const apiDuration = apiMatch.score?.duration || 'REGULAR'
+
+    // Capturar marcadores de penaltis (solo cuando hay tanda de penaltis)
+    const hPenalties = apiMatch.score?.penalties?.home ?? null
+    const aPenalties = apiMatch.score?.penalties?.away ?? null
 
     // Intentar obtener scores de múltiples fuentes del API
     // (el plan gratuito a veces solo tiene halfTime o regularTime)
@@ -189,50 +254,91 @@ export async function doSync() {
       if (hScore > aScore) winner = match.home_team
       else if (aScore > hScore) winner = match.away_team
       else {
-        const wName = apiMatch.score?.winner === 'HOME_TEAM' ? apiMatch.homeTeam?.name : apiMatch.awayTeam?.name
-        winner = TEAM_TRANSLATIONS[wName] || wName || null
+        // Empate en tiempo reglamentario: usar el campo winner de la API (se decide por penaltis/ET)
+        const apiWinnerSide = apiMatch.score?.winner // 'HOME_TEAM', 'AWAY_TEAM', or null
+        if (apiWinnerSide === 'HOME_TEAM') {
+          winner = TEAM_TRANSLATIONS[apiMatch.homeTeam?.name] || apiMatch.homeTeam?.name || match.home_team
+        } else if (apiWinnerSide === 'AWAY_TEAM') {
+          winner = TEAM_TRANSLATIONS[apiMatch.awayTeam?.name] || apiMatch.awayTeam?.name || match.away_team
+        }
       }
     }
 
-    // Validar si hay cambios en scores, estado, hora de inicio o api_match_id
+    // Para partidos de eliminatoria en vivo o finalizados: actualizar equipos reales desde la API.
+    // IMPORTANTE: En R32 la BD puede tener equipos calculados desde grupos (equivocados).
+    // La API nos da los equipos reales del sorteo. Los usamos para corregir la BD.
+    let apiHomeTeam = match.home_team
+    let apiAwayTeam = match.away_team
+    if (match.stage !== 'group' && (isFinished || isLive)) {
+      const translatedHome = TEAM_TRANSLATIONS[apiMatch.homeTeam?.name] || apiMatch.homeTeam?.name
+      const translatedAway = TEAM_TRANSLATIONS[apiMatch.awayTeam?.name] || apiMatch.awayTeam?.name
+      if (translatedHome) apiHomeTeam = translatedHome
+      if (translatedAway) apiAwayTeam = translatedAway
+    }
+
+    // Validar si hay cambios en scores, estado, hora de inicio, api_match_id o equipos
     const timeChanged = new Date(match.start_time).getTime() !== new Date(apiMatch.utcDate).getTime()
     const apiIdChanged = match.api_match_id !== apiMatch.id?.toString()
     const scoreChanged = match.home_score !== hScore || match.away_score !== aScore
     const statusChanged = match.status !== newStatus
     const winnerChanged = match.winner !== winner
+    const teamsChanged = match.home_team !== apiHomeTeam || match.away_team !== apiAwayTeam
+    const durationChanged = (match.duration || 'REGULAR') !== apiDuration
+    const penaltiesChanged = match.home_penalties !== hPenalties || match.away_penalties !== aPenalties
 
-    const changed = scoreChanged || statusChanged || winnerChanged || timeChanged || apiIdChanged
+    const changed = scoreChanged || statusChanged || winnerChanged || timeChanged || apiIdChanged || teamsChanged || durationChanged || penaltiesChanged
     if (!changed) continue
 
     const updatePayload = {
-      home_score:   hScore,
-      away_score:   aScore,
-      winner:       winner,
-      status:       newStatus,
-      start_time:   apiMatch.utcDate
+      home_team:       apiHomeTeam,
+      away_team:       apiAwayTeam,
+      home_score:      hScore,
+      away_score:      aScore,
+      winner:          winner,
+      status:          newStatus,
+      start_time:      apiMatch.utcDate,
+      duration:        apiDuration,
+      home_penalties:  hPenalties,
+      away_penalties:  aPenalties
     }
     if (apiMatch.id) updatePayload.api_match_id = apiMatch.id.toString()
 
+    if (teamsChanged) {
+      console.log(`[doSync] Partido ${match.id} - corrigiendo equipos: ${match.home_team} vs ${match.away_team} → ${apiHomeTeam} vs ${apiAwayTeam}`)
+    }
+
     const { error: updateErr } = await supabase.from('matches').update(updatePayload).eq('id', match.id)
     if (updateErr) {
-      if (updateErr.message?.includes('api_match_id')) {
-        const { error: e2 } = await supabase.from('matches').update({
-          home_score: hScore, away_score: aScore, winner, status: newStatus, start_time: apiMatch.utcDate
-        }).eq('id', match.id)
+      // Fallback si fallan columnas nuevas (duration, penalties)
+      const safePayload = {
+        home_team: apiHomeTeam, away_team: apiAwayTeam,
+        home_score: hScore, away_score: aScore,
+        winner, status: newStatus, start_time: apiMatch.utcDate
+      }
+      if (apiMatch.id) safePayload.api_match_id = apiMatch.id.toString()
+      const errMsg = updateErr.message || ''
+      if (errMsg.includes('api_match_id') || errMsg.includes('duration') || errMsg.includes('penalties')) {
+        const { error: e2 } = await supabase.from('matches').update(safePayload).eq('id', match.id)
         if (e2) throw e2
+        console.warn(`[doSync] Columnas nuevas (duration/penalties) no disponibles aún. Ejecuta la migración SQL.`)
       } else {
         throw updateErr
       }
     }
 
+    match.home_team = apiHomeTeam
+    match.away_team = apiAwayTeam
     match.home_score = hScore
     match.away_score = aScore
     match.winner = winner
     match.status = newStatus
     match.start_time = apiMatch.utcDate
     match.api_match_id = apiMatch.id?.toString()
+    match.duration = apiDuration
+    match.home_penalties = hPenalties
+    match.away_penalties = aPenalties
     updatedCount++
-    console.log(`[doSync] Partido ${match.id} actualizado (scores, status, time o id)`)
+    console.log(`[doSync] Partido ${match.id} actualizado (scores, status, time, teams o id)`)
   }
 
   // 4. Propagar bracket si hubo cambios

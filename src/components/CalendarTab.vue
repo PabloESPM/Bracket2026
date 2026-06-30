@@ -462,6 +462,27 @@
                   vs
                 </span>
               </div>
+
+              <!-- Duration badge: ET or P for knockout matches -->
+              <span
+                v-if="match.isFinished && match.stage !== 'group' && match.duration && match.duration !== 'REGULAR'"
+                class="text-[7px] font-black mt-0.5 px-1.5 py-0.5 rounded border uppercase tracking-wide"
+                :class="match.duration === 'PENALTY_SHOOTOUT'
+                  ? 'text-violet-400 bg-violet-950/40 border-violet-900/40'
+                  : 'text-amber-400 bg-amber-950/40 border-amber-900/40'"
+                :title="match.duration === 'PENALTY_SHOOTOUT' ? 'Decidido en penaltis' : 'Decidido en prórroga'"
+              >
+                {{ match.duration === 'PENALTY_SHOOTOUT' ? '⚽ Penaltis' : '⏱ Prórroga' }}
+              </span>
+
+              <!-- Penalty shootout scores -->
+              <span
+                v-if="match.isFinished && match.duration === 'PENALTY_SHOOTOUT' && match.homePenalties !== null && match.awayPenalties !== null"
+                class="text-[7px] font-black text-violet-400 mt-0.5 tracking-wide"
+                title="Resultado de penaltis"
+              >
+                ({{ match.homePenalties }} - {{ match.awayPenalties }})
+              </span>
               
               <!-- Indicator of predicted winner for knockout matches -->
               <span
@@ -832,7 +853,10 @@ const allMatchesFormatted = computed(() => {
       roundKey: getRoundKey(om.id),
       city: om.city || getCityOrStadium(om.id, 'city'),
       stadium: om.stadium || getCityOrStadium(om.id, 'stadium'),
-      points_earned: pred?.points_earned !== undefined ? pred.points_earned : null
+      points_earned: pred?.points_earned !== undefined ? pred.points_earned : null,
+      duration: om.duration || 'REGULAR',
+      homePenalties: om.home_penalties ?? null,
+      awayPenalties: om.away_penalties ?? null
     })
   })
 
