@@ -1,62 +1,41 @@
 import { createClient } from '@supabase/supabase-js'
 
-const FD_API_URL  = 'https://api.football-data.org/v4'
-const FD_API_KEY = process.env.FD_API_KEY
-const COMPETITION = 'WC'
-
 export default async function handler(req) {
   try {
     const url  = process.env.VITE_SUPABASE_URL
     const srvKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!url || !srvKey) {
-      return new Response(JSON.stringify({ ok: false, error: 'Supabase keys missing in Netlify' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
+    const dbMatches = []
+    let dbError = null
 
-    const supabase = createClient(url, srvKey)
-
-    // 1. Fetch Supabase matches
-    const { data: dbMatches, error: dbErr } = await supabase
-      .from('matches')
-      .select('*')
-      .order('id', { ascending: true })
-
-    if (dbErr) throw dbErr
-
-    // 2. Fetch football-data.org matches
-    let apiMatches = []
-    let apiError = null
-    if (FD_API_KEY) {
+    if (url && srvKey) {
       try {
-        const res = await fetch(`${FD_API_URL}/competitions/${COMPETITION}/matches?season=2026`, {
-          headers: { 'X-Auth-Token': FD_API_KEY }
-        })
-        if (res.ok) {
-          const data = await res.json()
-          apiMatches = data.matches || []
+        const supabase = createClient(url, srvKey)
+        const { data, error } = await supabase
+          .from('matches')
+          .select('*')
+          .order('id', { ascending: true })
+        if (error) {
+          dbError = error.message
         } else {
-          apiError = `API returned ${res.status}: ${res.statusText}`
+          dbMatches.push(...(data || []))
         }
       } catch (err) {
-        apiError = err.message
+        dbError = err.message
       }
     } else {
-      apiError = 'FD_API_KEY missing'
+      dbError = 'Supabase credentials missing in process.env'
     }
-
-    // Filter Group A matches for quick debug
-    const dbGroupAMatches = dbMatches.filter(m => m.id.startsWith('A'))
-    const apiGroupAMatches = apiMatches.filter(m => m.group === 'GROUP_A' || (m.homeTeam?.name === 'Mexico' || m.awayTeam?.name === 'Mexico' || m.homeTeam?.name === 'Germany' || m.awayTeam?.name === 'Germany'))
 
     return new Response(JSON.stringify({
       ok: true,
-      apiError,
-      dbGroupAMatches,
-      apiGroupAMatchesSample: apiGroupAMatches.slice(0, 10),
-      dbAllMatchesSample: dbMatches.map(m => ({ id: m.id, home: m.home_team, away: m.away_team, score: `${m.home_score}-${m.away_score}`, status: m.status, winner: m.winner }))
+      hasUrl: !!url,
+      urlStart: url ? url.substring(0, 15) : null,
+      hasSrvKey: !!srvKey,
+      dbError,
+      matchesCount: dbMatches.length,
+      groupAMatches: dbMatches.filter(m => m.id.startsWith('A')).map(m => ({ id: m.id, home: m.home_team, away: m.away_team, score: `${m.home_score}-${m.away_score}`, status: m.status })),
+      knockoutMatches: dbMatches.filter(m => m.stage !== 'group').map(m => ({ id: m.id, home: m.home_team, away: m.away_team, score: `${m.home_score}-${m.away_score}`, status: m.status, api_id: m.api_match_id }))
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
